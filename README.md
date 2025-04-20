@@ -1,16 +1,54 @@
-# unigo_mobile
+# Unigo Frontend
 
-A new Flutter project.
+Frontend da aplicação Unigo, uma plataforma educacional desenvolvida com Flutter.
 
-## Getting Started
+## 🚀 Tecnologias
 
-This project is a starting point for a Flutter application.
+- Flutter
+- Dart
+- Provider para gerenciamento de estado
+- Cloudinary para upload de imagens
+- HTTP para requisições à API
 
-A few resources to get you started if this is your first Flutter project:
+## 📋 Pré-requisitos
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Flutter SDK (versão 3.0 ou superior)
+- Dart SDK
+- Android Studio ou VS Code com extensões do Flutter
+- Emulador Android/iOS ou dispositivo físico
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🔧 Instalação
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/JenifferFerraz/unigo-frontend.git
+cd unigo-frontend
+```
+
+2. Instale as dependências:
+```bash
+flutter pub get
+```
+
+3. Configure as variáveis de ambiente:
+Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+```env
+API_URL=http://localhost:3000
+CLOUDINARY_CLOUD_NAME=seu_cloud_name
+CLOUDINARY_API_KEY=sua_api_key
+```
+
+4. Execute o aplicativo:
+```bash
+flutter run
+```
+
+
+## 🛠️ Scripts Disponíveis
+
+- `flutter pub get` - Instala as dependências
+- `flutter run` - Executa o aplicativo
+- `flutter build` - Gera o build do aplicativo
+- `flutter test` - Executa os testes
+- `flutter analyze` - Analisa o código
+
