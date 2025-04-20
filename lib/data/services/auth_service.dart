@@ -7,14 +7,16 @@ import '../../routes/app_routes.dart';
 import './storage_service.dart';
 import '../models/user_model.dart';
 import '../../core/config/env_service.dart';
+import 'dart:convert';
+import './location_service.dart';
 
 class AuthService extends GetxService {
-  final StorageService _storage = Get.find<StorageService>();
+  final StorageService storage = Get.find<StorageService>();
   final Rx<User?> currentUser = Rx<User?>(null);
   final RxBool isLoading = false.obs;
   final RxString error = ''.obs;
 
-  final _dio = Dio(BaseOptions(
+  final dio = Dio(BaseOptions(
     baseUrl: EnvService.apiBaseUrl,
     headers: {
       'Content-Type': 'application/json',
@@ -30,9 +32,10 @@ class AuthService extends GetxService {
   }
 
   Future<AuthService> init() async {
-    final userData = await _storage.getUser();
+    final userData = await storage.getUserData();
     if (userData != null) {
-      currentUser.value = userData;
+      print('Initializing with stored user data: ${jsonEncode(userData)}');
+      currentUser.value = User.fromJson(userData);
     }
     return this;
   }
@@ -49,7 +52,7 @@ class AuthService extends GetxService {
     try {
       isLoading.value = true;
       
-      final response = await _dio.post('/users', data: {
+      final response = await dio.post('/users', data: {
         'name': name,
         'email': email,
         'password': password,
@@ -61,9 +64,9 @@ class AuthService extends GetxService {
 
       if (response.statusCode == 201) {
         final userData = response.data;
+        print('Register response data: ${jsonEncode(userData)}');
         currentUser.value = User.fromJson(userData);
-        await _storage.saveUser(currentUser.value!);
-        await _storage.saveToken(userData['token']);
+        await storage.saveUserData(userData);
         return true;
       }
       
@@ -85,16 +88,24 @@ class AuthService extends GetxService {
       isLoading.value = true;
       error.value = '';
       
-      final response = await _dio.post('/auth/login', data: {
+      final response = await dio.post('/auth/login', data: {
         'email': email,
         'password': password,
       });
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 202) {
         final userData = response.data;
+        print('Login response data: ${jsonEncode(userData)}');
+        
         currentUser.value = User.fromJson(userData);
-        await _storage.saveUser(currentUser.value!);
-        await _storage.saveToken(userData['token']);
+        await storage.saveUserData(userData);
+
+        if (userData['requiresTermsAcceptance'] == true) {
+          Get.offAllNamed(AppRoutes.TERMS);
+          return true;
+        }
+
+        await handleLocationPermission();
         return true;
       }
       
@@ -120,8 +131,7 @@ class AuthService extends GetxService {
   }
 
   Future<void> logout() async {
-    await _storage.clearUser();
-    await _storage.deleteToken();
+    await storage.clearUserData();
     currentUser.value = null;
     Get.offAllNamed(AppRoutes.LOGIN);
   }
@@ -146,7 +156,7 @@ class AuthService extends GetxService {
     try {
       isLoading.value = true;
       
-      final response = await _dio.post('/auth/reset-password', data: {
+      final response = await dio.post('/auth/reset-password', data: {
         'email': email,
       });
 
@@ -165,12 +175,40 @@ class AuthService extends GetxService {
 
   Future<void> fetchCourses() async {
     try {
-      final response = await _dio.get('/courses');
+      final response = await dio.get('/courses');
       if (response.statusCode == 200) {
         courses.value = List<Map<String, dynamic>>.from(response.data);
       }
     } catch (e) {
       print('Erro ao buscar cursos: $e');
+    }
+  }
+
+  Future<void> handleLocationPermission() async {
+    try {
+      final locationService = Get.find<LocationService>();
+      final hasPermission = await locationService.requestLocationPermission();
+      
+      if (hasPermission) {
+        Get.offAllNamed('/home');
+      } else {
+        Get.snackbar(
+          'Erro',
+          'É necessário permitir o acesso à localização para usar o aplicativo',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      print('Erro ao solicitar permissão de localização: $e');
+      Get.snackbar(
+        'Erro',
+        'Ocorreu um erro ao solicitar permissão de localização',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 } 

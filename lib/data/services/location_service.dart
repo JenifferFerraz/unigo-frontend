@@ -8,25 +8,29 @@ class LocationService extends GetxService {
 
   Future<LocationService> init() async {
     try {
-      // Verifica se o serviço de localização está habilitado
       isLocationEnabled.value = await Geolocator.isLocationServiceEnabled();
-      
-      if (isLocationEnabled.value) {
-        // Verifica a permissão
-        LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
-
-        if (permission != LocationPermission.denied) {
-          // Obtém a posição atual
-          currentPosition.value = await Geolocator.getCurrentPosition();
-        }
-      }
     } catch (e) {
       print('Erro ao inicializar serviço de localização: $e');
     }
     return this;
+  }
+
+  Future<bool> requestLocationPermission() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission != LocationPermission.denied) {
+        currentPosition.value = await Geolocator.getCurrentPosition();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Erro ao solicitar permissão de localização: $e');
+      return false;
+    }
   }
 
   Future<Position?> getCurrentLocation() async {
