@@ -71,11 +71,6 @@ class LoginPage extends GetView<AuthService> {
                             email: emailController.text,
                             password: passwordController.text,
                           );
-                          
-                          if (success) {
-                            await locationService.getCurrentLocation();
-                            Get.offAllNamed(AppRoutes.HOME);
-                          }
                         },
                       )),
                       const SizedBox(height: 24),
