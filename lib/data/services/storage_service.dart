@@ -10,47 +10,76 @@ class StorageService extends GetxService {
     return this;
   }
 
-  Future<void> saveUser(User user) async {
+  Future<void> saveUserData(Map<String, dynamic> userData) async {
     try {
+      final userDataString = jsonEncode(userData);
       await _storage.write(
-        key: 'user',
-        value: jsonEncode(user.toJson()),
+        key: 'user_data',
+        value: userDataString,
+        aOptions: const AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+        iOptions: const IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+        ),
       );
     } catch (e) {
-      print('Error saving user: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getUserData() async {
+    try {
+      final userDataJson = await _storage.read(
+        key: 'user_data',
+        aOptions: const AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+        iOptions: const IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+        ),
+      );
+      
+      if (userDataJson != null) {
+        return jsonDecode(userDataJson);
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 
   Future<User?> getUser() async {
-    try {
-      final userJson = await _storage.read(key: 'user');
-      if (userJson != null) {
-        return User.fromJson(jsonDecode(userJson));
-      }
-      return null;
-    } catch (e) {
-      print('Error getting user: $e');
-      return null;
+    final data = await getUserData();
+    if (data != null) {
+      return User.fromJson(data);
     }
-  }
-
-  Future<void> clearUser() async {
-    try {
-      await _storage.delete(key: 'user');
-    } catch (e) {
-      print('Error clearing user: $e');
-    }
-  }
-
-  Future<void> saveToken(String token) async {
-    await _storage.write(key: 'token', value: token);
+    return null;
   }
 
   Future<String?> getToken() async {
-    return await _storage.read(key: 'token');
+    final data = await getUserData();
+    return data?['token'];
   }
 
-  Future<void> deleteToken() async {
-    await _storage.delete(key: 'token');
+  Future<String?> getRefreshToken() async {
+    final data = await getUserData();
+    return data?['refreshToken'];
+  }
+
+  Future<void> clearUserData() async {
+    try {
+      await _storage.delete(
+        key: 'user_data',
+        aOptions: const AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+        iOptions: const IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
   }
 } 
