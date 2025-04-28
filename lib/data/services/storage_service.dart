@@ -9,7 +9,7 @@ class StorageService extends GetxService {
   Future<StorageService> init() async {
     return this;
   }
-
+  /// Salva dados do usuário de forma segura
   Future<void> saveUserData(Map<String, dynamic> userData) async {
     try {
       final userDataString = jsonEncode(userData);
@@ -27,7 +27,7 @@ class StorageService extends GetxService {
       rethrow;
     }
   }
-
+  /// Recupera dados do usuário do armazenamento seguro
   Future<Map<String, dynamic>?> getUserData() async {
     try {
       final userDataJson = await _storage.read(
@@ -48,7 +48,7 @@ class StorageService extends GetxService {
       return null;
     }
   }
-
+  /// Recupera objeto User dos dados armazenados
   Future<User?> getUser() async {
     final data = await getUserData();
     if (data != null) {
@@ -56,17 +56,18 @@ class StorageService extends GetxService {
     }
     return null;
   }
-
+  /// Recupera token de autenticação
   Future<String?> getToken() async {
     final data = await getUserData();
     return data?['token'];
   }
-
+  /// Recupera token de refresh
   Future<String?> getRefreshToken() async {
     final data = await getUserData();
     return data?['refreshToken'];
   }
 
+  /// Remove todos os dados do usuário do armazenamento
   Future<void> clearUserData() async {
     try {
       await _storage.delete(
