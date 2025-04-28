@@ -6,6 +6,7 @@ class LocationService extends GetxService {
   final RxBool isLocationEnabled = false.obs;
   final Rxn<Position> currentPosition = Rxn<Position>();
 
+  // Inicializa o serviço verificando disponibilidade
   Future<LocationService> init() async {
     try {
       isLocationEnabled.value = await Geolocator.isLocationServiceEnabled();
@@ -14,7 +15,7 @@ class LocationService extends GetxService {
     }
     return this;
   }
-
+  // Solicita permissão de localização ao usuário
   Future<bool> requestLocationPermission() async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
@@ -32,7 +33,7 @@ class LocationService extends GetxService {
       return false;
     }
   }
-
+  // Obtém a localização atual do dispositivo
   Future<Position?> getCurrentLocation() async {
     try {
       final position = await Geolocator.getCurrentPosition();
