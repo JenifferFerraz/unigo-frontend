@@ -3,12 +3,16 @@ class StudentProfile {
   final String studentId;
   final String phone;
   final int? courseId;
+  final String? shift;
+  final String? gender;
 
   StudentProfile({
     required this.id,
     required this.studentId,
     required this.phone,
     this.courseId,
+    this.shift,
+    this.gender,
   });
 
   factory StudentProfile.fromJson(Map<String, dynamic> json) {
@@ -17,6 +21,8 @@ class StudentProfile {
       studentId: json['studentId'],
       phone: json['phone'],
       courseId: json['courseId'],
+      shift: json['shift'],
+      gender: json['gender'],
     );
   }
 
@@ -26,6 +32,8 @@ class StudentProfile {
       'studentId': studentId,
       'phone': phone,
       'courseId': courseId,
+      'shift': shift,
+      'gender': gender,
     };
   }
 }
