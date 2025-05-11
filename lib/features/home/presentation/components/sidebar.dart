@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:convert';
 import '../../../../data/services/auth_service.dart';
 import '../../../../routes/app_routes.dart';
 
@@ -15,7 +16,6 @@ class Sidebar extends StatelessWidget {
         color: const Color(0xFF3C3CC0),
         child: Column(
           children: [
-          
             Obx(() {
               final user = _authService.currentUser.value;
               return UserAccountsDrawerHeader(
@@ -56,11 +56,13 @@ class Sidebar extends StatelessWidget {
               icon: Icons.location_on,
               title: 'Localização',
               onTap: () => Get.back(),
-            ),
-            _buildMenuItem(
+            ),            _buildMenuItem(
               icon: Icons.schedule,
               title: 'Horário de Aulas',
-              onTap: () => Get.back(),
+              onTap: () {
+                Get.back();
+                Get.toNamed(AppRoutes.SCHEDULE);
+              },
             ),
             _buildMenuItem(
               icon: Icons.event,

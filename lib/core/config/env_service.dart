@@ -8,10 +8,6 @@ class EnvService {
   static String get apiBaseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
   static String get socketUrl => dotenv.env['SOCKET_URL'] ?? 'http://localhost:3000';
   
-  static String get cloudinaryCloudName => dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
-  static String get cloudinaryApiKey => dotenv.env['CLOUDINARY_API_KEY'] ?? '';
-  static String get cloudinaryUploadPreset => dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
-  
   static String get googleMapsApiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   
   static String get appName => dotenv.env['APP_NAME'] ?? 'UniGo';
