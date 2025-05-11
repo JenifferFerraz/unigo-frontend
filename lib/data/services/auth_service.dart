@@ -54,15 +54,24 @@ class AuthService extends GetxService {
     try {
       isLoading.value = true;
       
-      final response = await dio.post('/users', data: {
+      // Extrai o gender do studentProfile e adiciona diretamente no objeto principal
+      final String? gender = studentProfile.remove('gender') as String?;
+      
+      final requestData = {
         'name': name,
         'email': email,
         'password': password,
         'cpf': cpf,
         'avatar': avatar,
         'role': role,
+        'termsAccepted': false,
+        if (gender != null) 'gender': gender,
         'studentProfile': studentProfile,
-      });
+      };
+      
+      print('Enviando dados de registro: ${jsonEncode(requestData)}');
+      
+      final response = await dio.post('/users', data: requestData);
 
       if (response.statusCode == 201) {
         final userData = response.data;
@@ -73,7 +82,26 @@ class AuthService extends GetxService {
       }
       
       return false;
+    } on DioException catch (e) {
+      print('Erro durante registro: ${e.response?.data ?? e.message}');
+      String errorMessage = 'Não foi possível criar a conta';
+      
+      if (e.response?.statusCode == 400 && e.response?.data != null) {
+        if (e.response?.data['error'] != null) {
+          errorMessage = e.response?.data['error'];
+        }
+      }
+      
+      Get.snackbar(
+        'Erro',
+        errorMessage,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return false;
     } catch (e) {
+      print('Erro não esperado durante registro: $e');
       Get.snackbar(
         'Erro',
         'Não foi possível criar a conta',
@@ -219,4 +247,4 @@ class AuthService extends GetxService {
       );
     }
   }
-} 
+}
