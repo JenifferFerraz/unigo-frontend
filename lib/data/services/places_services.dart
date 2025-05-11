@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 class PlacesServices extends GetxService {
   final RxList<String> searchHistory = <String>[].obs;
   final RxList<String> suggestions = <String>[].obs;
-
+  // Lista estática de locais disponíveis para pesquisa
   final List<String> locations = [
     'Bloco I, Sala 203',
     'Auditório Bloco F',
@@ -12,7 +12,8 @@ class PlacesServices extends GetxService {
     'Secretaria Geral',
 
   ];
-
+ /// Busca locais que correspondam à consulta fornecida
+  /// Retorna lista vazia se a consulta estiver vazia
   Future<List<String>> search(String query) async {
     if (query.isEmpty) return [];
     
@@ -21,6 +22,8 @@ class PlacesServices extends GetxService {
     ).toList();
   }
 
+  /// Adiciona uma consulta ao histórico
+  /// Mantém apenas as 10 pesquisas mais recentes
   void addToHistory(String query) {
     if (!searchHistory.contains(query)) {
       searchHistory.insert(0, query);
@@ -29,7 +32,7 @@ class PlacesServices extends GetxService {
       }
     }
   }
-
+  /// Limpa todo o histórico de pesquisas
   void clearHistory() {
     searchHistory.clear();
   }

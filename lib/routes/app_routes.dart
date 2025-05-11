@@ -7,6 +7,7 @@ import '../features/home/presentation/home_page.dart';
 import '../features/home/home_binding.dart';
 import '../data/middleware/auth_middleware.dart';
 import '../features/splash/presentation/splash_page.dart';
+import '../features/schedule/presentation/schedule_page.dart';
 
 abstract class AppRoutes {
   static const INITIAL = '/';
@@ -16,7 +17,7 @@ abstract class AppRoutes {
   static const TERMS = '/terms';
   static const HOME = '/home';
   static const PROFILE = '/profile';
-  static const CLASS_SCHEDULE = '/class-schedule';
+  static const SCHEDULE = '/schedule';
   static const EVENTS = '/events';
   static const EXAMS = '/exams';
   static const RESET_PASSWORD = '/reset-password';
@@ -52,5 +53,11 @@ abstract class AppRoutes {
       binding: HomeBinding(),
       middlewares: [AuthMiddleware()],
     ),
+    GetPage(
+      name: SCHEDULE,
+      page: () => SchedulePage(),
+      middlewares: [AuthMiddleware()],
+    ),
+  
   ];
 }
