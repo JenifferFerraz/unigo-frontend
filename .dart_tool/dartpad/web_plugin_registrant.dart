@@ -7,6 +7,7 @@
 // ignore_for_file: type=lint
 
 import 'package:flutter_facebook_auth_web/flutter_facebook_auth_web.dart';
+import 'package:flutter_image_compress_web/flutter_image_compress_web.dart';
 import 'package:flutter_secure_storage_web/flutter_secure_storage_web.dart';
 import 'package:flutter_tts/flutter_tts_web.dart';
 import 'package:geolocator_web/geolocator_web.dart';
@@ -21,6 +22,7 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 void registerPlugins([final Registrar? pluginRegistrar]) {
   final Registrar registrar = pluginRegistrar ?? webPluginRegistrar;
   FlutterFacebookAuthPlugin.registerWith(registrar);
+  FlutterImageCompressWeb.registerWith(registrar);
   FlutterSecureStorageWeb.registerWith(registrar);
   FlutterTtsPlugin.registerWith(registrar);
   GeolocatorPlugin.registerWith(registrar);
