@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
 
 
@@ -43,11 +44,12 @@ class SearchInput extends StatelessWidget {
   }
 }
 
-class TextInputWidget extends StatelessWidget {
-  final TextEditingController controller;
+class TextInputWidget extends StatelessWidget {  final TextEditingController controller;
   final String label;
   final bool obscureText;
   final TextInputType keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? hint;
 
   const TextInputWidget({
     Key? key,
@@ -55,6 +57,8 @@ class TextInputWidget extends StatelessWidget {
     required this.label,
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
+    this.inputFormatters,
+    this.hint,
   }) : super(key: key);
 
   @override
@@ -73,8 +77,8 @@ class TextInputWidget extends StatelessWidget {
       ),
       child: TextField(
         controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
+        obscureText: obscureText,        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         style: const TextStyle(
           color: Colors.black87,
           fontSize: 16,
