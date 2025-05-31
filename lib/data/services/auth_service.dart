@@ -68,13 +68,11 @@ class AuthService extends GetxService {
         'studentProfile': studentProfile,
       };
       
-      print('Enviando dados de registro: ${jsonEncode(requestData)}');
       
       final response = await dio.post('/users', data: requestData);
 
       if (response.statusCode == 201) {
         final userData = response.data;
-        print('Register response data: ${jsonEncode(userData)}');
         currentUser.value = User.fromJson(userData);
         await storage.saveUserData(userData);
         return true;
@@ -82,7 +80,6 @@ class AuthService extends GetxService {
       
       return false;
     } on DioException catch (e) {
-      print('Erro durante registro: ${e.response?.data ?? e.message}');
       String errorMessage = 'Não foi possível criar a conta';
       
       if (e.response?.statusCode == 400 && e.response?.data != null) {
@@ -100,7 +97,6 @@ class AuthService extends GetxService {
       );
       return false;
     } catch (e) {
-      print('Erro não esperado durante registro: $e');
       Get.snackbar(
         'Erro',
         'Não foi possível criar a conta',

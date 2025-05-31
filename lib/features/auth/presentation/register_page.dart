@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -9,8 +10,17 @@ import '../../../data/services/auth_service.dart';
 import '../../../data/services/upload_image_services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
-class RegisterPage extends GetView<AuthService> {
+class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTextInputFormatter(
+    mask: '###.###.###-##',
+    filter: {"#": RegExp(r'[0-9]')},
+  );
+  
+  static final phoneMask = MaskTextInputFormatter(
+    mask: '(##) #####-####',
+    filter: {"#": RegExp(r'[0-9]')},
+  );
   const RegisterPage({Key? key}) : super(key: key);
 
   @override
@@ -88,23 +98,15 @@ class RegisterPage extends GetView<AuthService> {
                             );
                             
                             if (image != null) {
-                              Get.snackbar(
-                                'Aguarde', 
-                                'Fazendo upload da imagem...',
-                                snackPosition: SnackPosition.TOP,
-                                duration: const Duration(seconds: 2),
-                              );
-                              
                               final url = await UploadImagensService.to.uploadImage(image);
                               
                               if (url != null) {
                                 avatarUrl.value = url.toString();
                                 Get.snackbar(
                                   'Sucesso', 
-                                  'Imagem carregada com sucesso',
+                                  'Imagem de perfil atualizada',
                                   snackPosition: SnackPosition.TOP,
-                                  backgroundColor: Colors.green[100],
-                                  colorText: Colors.green[900],
+                                  duration: const Duration(seconds: 2),
                                 );
                               } else {
                                 throw 'Falha ao carregar imagem';
@@ -113,7 +115,7 @@ class RegisterPage extends GetView<AuthService> {
                           } catch (e) {
                             Get.snackbar(
                               'Erro', 
-                              'Não foi possível carregar a imagem: ${e.toString()}',
+                              'Não foi possível carregar a imagem',
                               snackPosition: SnackPosition.TOP,
                               backgroundColor: Colors.red[100],
                               colorText: Colors.red[900],
@@ -162,11 +164,12 @@ class RegisterPage extends GetView<AuthService> {
                       label: 'Senha',
                       obscureText: true,
                     ),
-                    const SizedBox(height: 16),
-                    TextInputWidget(
+                    const SizedBox(height: 16),                    TextInputWidget(
                       controller: cpfController,
                       label: 'CPF',
                       keyboardType: TextInputType.number,
+                      inputFormatters: [cpfMask],
+                      hint: '000.000.000-00',
                     ),
                     const SizedBox(height: 16),
                     Obx(() => DropdownInputWidget<String>(
@@ -209,11 +212,12 @@ class RegisterPage extends GetView<AuthService> {
                       controller: studentIdController,
                       label: 'Matrícula',
                     ),
-                    const SizedBox(height: 16),
-                    TextInputWidget(
+                    const SizedBox(height: 16),                    TextInputWidget(
                       controller: phoneController,
                       label: 'Telefone',
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [phoneMask],
+                      hint: '(00) 00000-0000',
                     ),
                     const SizedBox(height: 24),
                     PrimaryButton(
@@ -237,60 +241,126 @@ class RegisterPage extends GetView<AuthService> {
                               duration: const Duration(seconds: 4),
                             );
                             return;
-                          }
-
-                          final studentProfile = {
+                          }                          final studentProfile = {
                             'studentId': studentIdController.text,
-                            'phone': phoneController.text,
+                            'phone': phoneMask.getUnmaskedText(),  // Remove a máscara antes de enviar
                             'courseId': selectedCourse.value,
                             'shift': selectedShift.value,
                             'gender': selectedGender.value,
-                          };
-
-                          Get.dialog(
-                            const Center(
-                              child: CircularProgressIndicator(),
+                          };Get.dialog(
+                            Center(
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 32),
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      spreadRadius: 1,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const SizedBox(
+                                        width: 32,
+                                        height: 32,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 3,
+                                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    const Text(
+                                      'Criando sua conta...',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Aguarde um momento',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                             barrierDismissible: false,
-                          );
-
-                          final success = await controller.register(
+                            barrierColor: Colors.black.withOpacity(0.3),
+                          );                          final success = await controller.register(
                             name: nameController.text,
                             email: emailController.text,
                             password: passwordController.text,
-                            cpf: cpfController.text,
+                            cpf: cpfMask.getUnmaskedText(), 
                             avatar: avatarUrl.value,
                             role: 'student',
                             studentProfile: studentProfile,
-                          );
-
-                          Get.back();
-
+                          );                          Get.back();
                           if (success) {
                             Get.snackbar(
-                              'Sucesso!',
-                              'Cadastro realizado com sucesso',
+                              'Conta Criada!',
+                              'Por favor, faça login para acessar o sistema',
                               snackPosition: SnackPosition.TOP,
                               backgroundColor: Colors.green[100],
                               colorText: Colors.green[900],
+                              duration: const Duration(seconds: 3),
                             );
-                            await Future.delayed(const Duration(seconds: 1));
-                            Get.offAllNamed(AppRoutes.HOME);
+                            nameController.clear();
+                            emailController.clear();
+                            passwordController.clear();
+                            cpfController.clear();
+                            studentIdController.clear();
+                            phoneController.clear();                            selectedCourse.value = null;
+                            selectedShift.value = null;
+                            selectedGender.value = null;
+                            avatarUrl.value = '';
+                            await Future.delayed(const Duration(seconds: 2));
+                            Get.until((route) => route.settings.name == AppRoutes.LOGIN);
                           } else {
-                            throw 'Falha ao realizar cadastro';
+                            throw 'Não foi possível criar sua conta';
                           }
-                        } catch (e) {
-                          Get.back();
-                          Get.snackbar(
-                            'Erro no Cadastro',
-                            e.toString().contains('duplicate key')
-                                ? 'Email ou CPF já cadastrado'
-                                : 'Ocorreu um erro ao realizar o cadastro: ${e.toString()}',
-                            snackPosition: SnackPosition.BOTTOM,
-                            backgroundColor: Colors.red[100],
-                            colorText: Colors.red[900],
-                            duration: const Duration(seconds: 5),
-                          );
+                        } catch (e) {                          Get.back();
+                          if (e.toString().contains('duplicate key')) {
+                            Get.snackbar(
+                              'Conta Existente',
+                              'Este email ou CPF já está cadastrado. Por favor, faça login ou use outro email/CPF.',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.orange[100],
+                              colorText: Colors.orange[900],
+                              duration: const Duration(seconds: 5),
+                              mainButton: TextButton(
+                                onPressed: () => Get.until((route) => route.settings.name == AppRoutes.LOGIN),
+                                child: const Text('Ir para Login', style: TextStyle(color: Colors.blue)),
+                              ),
+                            );
+                          } else {
+                            Get.snackbar(
+                              'Erro no Cadastro',
+                              'Ocorreu um erro ao criar sua conta. Tente novamente.',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.red[100],
+                              colorText: Colors.red[900],
+                              duration: const Duration(seconds: 5),
+                            );
+                          }
                         }
                       },
                       text: 'Cadastrar',

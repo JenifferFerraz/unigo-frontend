@@ -200,6 +200,42 @@
       "languageVersion": "3.3"
     },
     {
+      "name": "flutter_image_compress",
+      "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_image_compress-2.4.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "flutter_image_compress_common",
+      "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_image_compress_common-1.0.6",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "flutter_image_compress_macos",
+      "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_image_compress_macos-1.0.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "flutter_image_compress_ohos",
+      "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_image_compress_ohos-0.0.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "flutter_image_compress_platform_interface",
+      "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_image_compress_platform_interface-1.0.5",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "flutter_image_compress_web",
+      "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_image_compress_web-0.1.5",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "flutter_lints",
       "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_lints-2.0.3",
       "packageUri": "lib/",
@@ -558,6 +594,12 @@
       "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/logger-2.5.0",
       "packageUri": "lib/",
       "languageVersion": "2.17"
+    },
+    {
+      "name": "mask_text_input_formatter",
+      "rootUri": "file:///C:/Users/ferra/AppData/Local/Pub/Cache/hosted/pub.dev/mask_text_input_formatter-2.9.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "matcher",
@@ -1010,7 +1052,7 @@
       "languageVersion": "3.0"
     }
   ],
-  "generated": "2025-05-31T21:02:57.165109Z",
+  "generated": "2025-05-31T22:40:25.282967Z",
   "generator": "pub",
   "generatorVersion": "3.7.2",
   "flutterRoot": "file:///C:/Users/ferra/Downloads/flutter",
