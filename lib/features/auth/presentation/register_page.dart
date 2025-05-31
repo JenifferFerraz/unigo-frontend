@@ -15,6 +15,9 @@ class RegisterPage extends GetView<AuthService> {
 
   @override
   Widget build(BuildContext context) {
+    // Carregar cursos ao abrir a página
+    controller.fetchCourses();
+    
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
@@ -24,13 +27,8 @@ class RegisterPage extends GetView<AuthService> {
     final selectedCourse = Rxn<int>();
     final selectedShift = Rxn<String>();
     final selectedGender = Rxn<String>();
-    final avatarUrl = ''.obs;
-
-    final courses = [
-      {'id': 1, 'name': 'Engenharia de Software'},
-      {'id': 2, 'name': 'Ciência da Computação'},
-      {'id': 3, 'name': 'Sistemas de Informação'},
-    ];
+    final avatarUrl = ''.obs;    // Usando os cursos do controller
+    final courses = controller.courses;
 
     final shifts = [
       'matutino',
@@ -283,4 +281,4 @@ class RegisterPage extends GetView<AuthService> {
       ),
     );
   }
-} 
+}

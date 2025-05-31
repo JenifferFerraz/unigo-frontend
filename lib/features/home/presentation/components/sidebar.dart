@@ -50,13 +50,23 @@ class Sidebar extends StatelessWidget {
                   ),
                 ),
               );
-            }),
-
-            _buildMenuItem(
+            }),            _buildMenuItem(
               icon: Icons.location_on,
-              title: 'Localização',
-              onTap: () => Get.back(),
-            ),            _buildMenuItem(
+              title: 'Buscar Localização',
+              onTap: () {
+                Get.back();
+                Get.toNamed(AppRoutes.LOCATION_SEARCH);
+              },
+            ),
+            _buildMenuItem(
+              icon: Icons.notifications,
+              title: 'Minhas Aulas',
+              onTap: () {
+                Get.back();
+                Get.toNamed(AppRoutes.CLASS_NOTIFICATIONS);
+              },
+            ),            
+            _buildMenuItem(
               icon: Icons.schedule,
               title: 'Horário de Aulas',
               onTap: () {
