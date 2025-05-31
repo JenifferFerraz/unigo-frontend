@@ -11,6 +11,10 @@
 .swiftpm/
 migrate_working_dir/
 
+.env
+.env.*
+!.env.example
+
 *.iml
 *.ipr
 *.iws
