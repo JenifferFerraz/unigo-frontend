@@ -1,3 +1,5 @@
+import '../models/course_model.dart';
+
 class StudentProfile {
   final int id;
   final String studentId;
@@ -38,13 +40,14 @@ class StudentProfile {
   }
 }
 
+
 class User {
   final int id;
   final String name;
   final String email;
   final String cpf;
   final String? avatar;
-  final String? course;
+  final Course? course;
   final bool isEmailVerified;
   final bool isDeleted;
   final String role;
@@ -76,9 +79,8 @@ class User {
       id: json['id'],
       name: json['name'],
       email: json['email'],
-      cpf: json['cpf'],
-      avatar: json['avatar'],
-      course: json['course'],
+      cpf: json['cpf'],      avatar: json['avatar'],
+      course: json['course'] != null ? Course.fromJson(json['course']) : null,
       isEmailVerified: json['isEmailVerified'],
       isDeleted: json['isDeleted'],
       role: json['role'],
@@ -97,9 +99,8 @@ class User {
       'id': id,
       'name': name,
       'email': email,
-      'cpf': cpf,
-      'avatar': avatar,
-      'course': course,
+      'cpf': cpf,      'avatar': avatar,
+      'course': course?.toJson(),
       'isEmailVerified': isEmailVerified,
       'isDeleted': isDeleted,
       'role': role,

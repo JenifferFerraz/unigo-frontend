@@ -35,7 +35,6 @@ class AuthService extends GetxService {
   Future<AuthService> init() async {
     final userData = await storage.getUserData();
     if (userData != null) {
-      print('Initializing with stored user data: ${jsonEncode(userData)}');
       currentUser.value = User.fromJson(userData);
     }
     return this;
@@ -126,7 +125,6 @@ class AuthService extends GetxService {
 
       if (response.statusCode == 200 || response.statusCode == 202) {
         final userData = response.data;
-        print('Login response data: ${jsonEncode(userData)}');
         
         currentUser.value = User.fromJson(userData);
         await storage.saveUserData(userData);
@@ -208,15 +206,20 @@ class AuthService extends GetxService {
     }
   }
   /// Busca a lista de cursos disponíveis da API
-
   Future<void> fetchCourses() async {
     try {
-      final response = await dio.get('/courses');
+      final response = await dio.get('/api');
       if (response.statusCode == 200) {
         courses.value = List<Map<String, dynamic>>.from(response.data);
       }
     } catch (e) {
-      print('Erro ao buscar cursos: $e');
+      Get.snackbar(
+        'Erro',
+        'Não foi possível carregar a lista de cursos',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -237,7 +240,6 @@ class AuthService extends GetxService {
         );
       }
     } catch (e) {
-      print('Erro ao solicitar permissão de localização: $e');
       Get.snackbar(
         'Erro',
         'Ocorreu um erro ao solicitar permissão de localização',
