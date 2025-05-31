@@ -1,14 +1,20 @@
+import '../models/course_model.dart';
+
 class StudentProfile {
   final int id;
   final String studentId;
   final String phone;
   final int? courseId;
+  final String? shift;
+  final String? gender;
 
   StudentProfile({
     required this.id,
     required this.studentId,
     required this.phone,
     this.courseId,
+    this.shift,
+    this.gender,
   });
 
   factory StudentProfile.fromJson(Map<String, dynamic> json) {
@@ -17,6 +23,8 @@ class StudentProfile {
       studentId: json['studentId'],
       phone: json['phone'],
       courseId: json['courseId'],
+      shift: json['shift'],
+      gender: json['gender'],
     );
   }
 
@@ -26,9 +34,12 @@ class StudentProfile {
       'studentId': studentId,
       'phone': phone,
       'courseId': courseId,
+      'shift': shift,
+      'gender': gender,
     };
   }
 }
+
 
 class User {
   final int id;
@@ -36,7 +47,7 @@ class User {
   final String email;
   final String cpf;
   final String? avatar;
-  final String? course;
+  final Course? course;
   final bool isEmailVerified;
   final bool isDeleted;
   final String role;
@@ -68,9 +79,8 @@ class User {
       id: json['id'],
       name: json['name'],
       email: json['email'],
-      cpf: json['cpf'],
-      avatar: json['avatar'],
-      course: json['course'],
+      cpf: json['cpf'],      avatar: json['avatar'],
+      course: json['course'] != null ? Course.fromJson(json['course']) : null,
       isEmailVerified: json['isEmailVerified'],
       isDeleted: json['isDeleted'],
       role: json['role'],
@@ -89,9 +99,8 @@ class User {
       'id': id,
       'name': name,
       'email': email,
-      'cpf': cpf,
-      'avatar': avatar,
-      'course': course,
+      'cpf': cpf,      'avatar': avatar,
+      'course': course?.toJson(),
       'isEmailVerified': isEmailVerified,
       'isDeleted': isDeleted,
       'role': role,

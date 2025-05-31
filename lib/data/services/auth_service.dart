@@ -35,7 +35,6 @@ class AuthService extends GetxService {
   Future<AuthService> init() async {
     final userData = await storage.getUserData();
     if (userData != null) {
-      print('Initializing with stored user data: ${jsonEncode(userData)}');
       currentUser.value = User.fromJson(userData);
     }
     return this;
@@ -54,15 +53,24 @@ class AuthService extends GetxService {
     try {
       isLoading.value = true;
       
-      final response = await dio.post('/users', data: {
+      // Extrai o gender do studentProfile e adiciona diretamente no objeto principal
+      final String? gender = studentProfile.remove('gender') as String?;
+      
+      final requestData = {
         'name': name,
         'email': email,
         'password': password,
         'cpf': cpf,
         'avatar': avatar,
         'role': role,
+        'termsAccepted': false,
+        if (gender != null) 'gender': gender,
         'studentProfile': studentProfile,
-      });
+      };
+      
+      print('Enviando dados de registro: ${jsonEncode(requestData)}');
+      
+      final response = await dio.post('/users', data: requestData);
 
       if (response.statusCode == 201) {
         final userData = response.data;
@@ -73,7 +81,26 @@ class AuthService extends GetxService {
       }
       
       return false;
+    } on DioException catch (e) {
+      print('Erro durante registro: ${e.response?.data ?? e.message}');
+      String errorMessage = 'Não foi possível criar a conta';
+      
+      if (e.response?.statusCode == 400 && e.response?.data != null) {
+        if (e.response?.data['error'] != null) {
+          errorMessage = e.response?.data['error'];
+        }
+      }
+      
+      Get.snackbar(
+        'Erro',
+        errorMessage,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return false;
     } catch (e) {
+      print('Erro não esperado durante registro: $e');
       Get.snackbar(
         'Erro',
         'Não foi possível criar a conta',
@@ -98,7 +125,6 @@ class AuthService extends GetxService {
 
       if (response.statusCode == 200 || response.statusCode == 202) {
         final userData = response.data;
-        print('Login response data: ${jsonEncode(userData)}');
         
         currentUser.value = User.fromJson(userData);
         await storage.saveUserData(userData);
@@ -180,15 +206,20 @@ class AuthService extends GetxService {
     }
   }
   /// Busca a lista de cursos disponíveis da API
-
   Future<void> fetchCourses() async {
     try {
-      final response = await dio.get('/courses');
+      final response = await dio.get('/api');
       if (response.statusCode == 200) {
         courses.value = List<Map<String, dynamic>>.from(response.data);
       }
     } catch (e) {
-      print('Erro ao buscar cursos: $e');
+      Get.snackbar(
+        'Erro',
+        'Não foi possível carregar a lista de cursos',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -209,7 +240,6 @@ class AuthService extends GetxService {
         );
       }
     } catch (e) {
-      print('Erro ao solicitar permissão de localização: $e');
       Get.snackbar(
         'Erro',
         'Ocorreu um erro ao solicitar permissão de localização',
@@ -219,4 +249,4 @@ class AuthService extends GetxService {
       );
     }
   }
-} 
+}

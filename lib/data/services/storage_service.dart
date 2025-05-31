@@ -9,6 +9,26 @@ class StorageService extends GetxService {
   Future<StorageService> init() async {
     return this;
   }
+  final Rx<String?> token = Rx<String?>(null);
+  Future<void> _loadToken() async {
+    try {
+      final allData = await readAllUserData();
+      final userData = allData['user_data'];
+      if (userData != null) {
+        final decodedData = jsonDecode(userData);
+        token.value = decodedData['token'] as String?;
+      }
+    } catch (e) {
+      token.value = null;
+    }
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    _loadToken();
+  }
+
   /// Salva dados do usuário de forma segura
   Future<void> saveUserData(Map<String, dynamic> userData) async {
     try {
@@ -27,6 +47,7 @@ class StorageService extends GetxService {
       rethrow;
     }
   }
+
   /// Recupera dados do usuário do armazenamento seguro
   Future<Map<String, dynamic>?> getUserData() async {
     try {
@@ -83,4 +104,20 @@ class StorageService extends GetxService {
       rethrow;
     }
   }
-} 
+
+  /// Read all data from secure storage
+  Future<Map<String, String>> readAllUserData() async {
+    try {
+      return await _storage.readAll(
+        aOptions: const AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+        iOptions: const IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+        ),
+      );
+    } catch (e) {
+      return {};
+    }
+  }
+}

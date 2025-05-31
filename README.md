@@ -34,21 +34,33 @@ flutter pub get
 Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 ```env
 API_URL=http://localhost:3000
-CLOUDINARY_CLOUD_NAME=seu_cloud_name
-CLOUDINARY_API_KEY=sua_api_key
+
 ```
 
 4. Execute o aplicativo:
+
+Para desenvolvimento web com porta fixa (recomendado):
+```powershell
+./start-dev.bat
+```
+Isso iniciará o servidor web na porta 3001.
+
+Ou para outros ambientes:
 ```bash
 flutter run
 ```
 
-
 ## 🛠️ Scripts Disponíveis
 
 - `flutter pub get` - Instala as dependências
-- `flutter run` - Executa o aplicativo
+- `./start-dev.bat` - Executa o aplicativo web na porta 3001 (Windows)
+- `flutter run` - Executa o aplicativo em qualquer plataforma
 - `flutter build` - Gera o build do aplicativo
+
+## 📝 Notas
+
+- Para desenvolvimento web, recomenda-se usar o script `start-dev.bat` que garante uma porta fixa (3001)
+- O backend está configurado para aceitar conexões de qualquer porta do localhost
 - `flutter test` - Executa os testes
 - `flutter analyze` - Analisa o código
 
