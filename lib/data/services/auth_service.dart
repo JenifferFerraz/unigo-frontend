@@ -15,7 +15,6 @@ class AuthService extends GetxService {
   final Rx<User?> currentUser = Rx<User?>(null);
   final RxBool isLoading = false.obs;
   final RxString error = ''.obs;
-
   final dio = Dio(BaseOptions(
     baseUrl: EnvService.apiBaseUrl,
     headers: {

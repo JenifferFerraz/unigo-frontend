@@ -5,8 +5,8 @@ class EnvService {
     await dotenv.load(fileName: ".env");
   }
 
-  static String get apiBaseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
-  static String get socketUrl => dotenv.env['SOCKET_URL'] ?? 'http://localhost:3000';
+  static String get apiBaseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:3002';
+  static String get socketUrl => dotenv.env['SOCKET_URL'] ?? 'http://localhost:3002';
   
   static String get googleMapsApiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   

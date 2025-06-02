@@ -33,7 +33,7 @@ flutter pub get
 3. Configure as variáveis de ambiente:
 Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 ```env
-API_URL=http://localhost:3000
+API_URL=http://localhost:3002
 CLOUDINARY_CLOUD_NAME=seu_cloud_name
 CLOUDINARY_API_KEY=sua_api_key
 ```
