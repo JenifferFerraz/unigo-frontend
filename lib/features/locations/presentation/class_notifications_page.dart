@@ -79,7 +79,6 @@ class ClassNotificationsPage extends StatelessWidget {
   }
 
   Widget _buildClassCard(BuildContext context, ClassNotification classNotification) {
-    // Formata os horários de início e fim
     final startTime = _formatTime(classNotification.startTime);
     final endTime = _formatTime(classNotification.endTime);
 
@@ -98,7 +97,6 @@ class ClassNotificationsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Nome do curso e turma
             Row(
               children: [
                 CircleAvatar(
@@ -130,7 +128,6 @@ class ClassNotificationsPage extends StatelessWidget {
             ),
             const Divider(height: 24),
 
-            // Informações da localização e horário
             Row(
               children: [
                 Expanded(
@@ -183,18 +180,16 @@ class ClassNotificationsPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Botões de ação
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton.icon(
                   onPressed: () {
-                    // Simulação - Criar Location a partir do ClassNotification
                     final location = Location(
-                      id: 0, // ID não importa neste caso
+                      id: 0, 
                       name: classNotification.locationName,
                       code: classNotification.locationCode,
-                      type: 'classroom', // Tipo padrão para aulas
+                      type: 'classroom', 
                       block: classNotification.block,
                       floor: classNotification.floor,
                     );
@@ -206,7 +201,6 @@ class ClassNotificationsPage extends StatelessWidget {
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {
-                    // Aqui irá integrar com a navegação interna do campus
                     Get.snackbar(
                       'Navegar',
                       'Navegação interna será implementada em breve',
@@ -228,13 +222,11 @@ class ClassNotificationsPage extends StatelessWidget {
     );
   }
 
-  // Formata o tempo de "HH:MM:SS" para "HH:MM"
   String _formatTime(String timeString) {
     try {
       final time = DateFormat('HH:mm:ss').parse(timeString);
       return DateFormat('HH:mm').format(time);
     } catch (e) {
-      // Se houver erro, retornar o string original
       return timeString;
     }
   }

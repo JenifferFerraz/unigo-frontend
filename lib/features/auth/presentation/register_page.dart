@@ -243,7 +243,7 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
                             return;
                           }                          final studentProfile = {
                             'studentId': studentIdController.text,
-                            'phone': phoneMask.getUnmaskedText(),  // Remove a máscara antes de enviar
+                            'phone': phoneMask.getUnmaskedText(), 
                             'courseId': selectedCourse.value,
                             'shift': selectedShift.value,
                             'gender': selectedGender.value,

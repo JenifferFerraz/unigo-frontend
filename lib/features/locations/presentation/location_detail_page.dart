@@ -24,7 +24,6 @@ class LocationDetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cabeçalho com código e tipo
             Card(
               elevation: 3,
               child: Padding(
@@ -62,7 +61,6 @@ class LocationDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Descrição
             if (location.description != null && location.description!.isNotEmpty)
               _buildInfoSection(
                 context: context,
@@ -71,7 +69,6 @@ class LocationDetailPage extends StatelessWidget {
                 icon: Icons.description,
               ),
 
-            // Pontos de referência
             if (location.nearbyLandmarks != null && location.nearbyLandmarks!.isNotEmpty)
               _buildInfoSection(
                 context: context,
@@ -80,7 +77,6 @@ class LocationDetailPage extends StatelessWidget {
                 icon: Icons.place,
               ),
 
-            // Notas de acessibilidade
             if (location.accessibilityNotes != null && location.accessibilityNotes!.isNotEmpty)
               _buildInfoSection(
                 context: context,
@@ -91,7 +87,6 @@ class LocationDetailPage extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Mapa se houver coordenadas
             if (location.latitude != null && location.longitude != null)
               _buildMap(),
           ],
@@ -101,7 +96,6 @@ class LocationDetailPage extends StatelessWidget {
     );
   }
 
-  // Constrói ícone específico para o tipo de localização
   Widget _buildLocationIcon() {
     IconData locationIcon;
     Color iconColor;
@@ -148,7 +142,6 @@ class LocationDetailPage extends StatelessWidget {
     );
   }
 
-  // Constrói chips de informação (bloco, andar)
   Widget _buildInfoChips() {
     List<Widget> chips = [];
 
@@ -179,7 +172,6 @@ class LocationDetailPage extends StatelessWidget {
     );
   }
 
-  // Constrói uma seção de informações
   Widget _buildInfoSection({
     required BuildContext context,
     required String title,
@@ -218,7 +210,6 @@ class LocationDetailPage extends StatelessWidget {
     );
   }
 
-  // Constrói o mapa se houver coordenadas
   Widget _buildMap() {
     if (location.latitude == null || location.longitude == null) {
       return const SizedBox.shrink();
@@ -282,7 +273,6 @@ class LocationDetailPage extends StatelessWidget {
     );
   }
 
-  // Botões de navegação e compartilhamento
   Widget _buildNavigationButtons(BuildContext context) {
     return BottomAppBar(
       child: Padding(
@@ -315,7 +305,6 @@ class LocationDetailPage extends StatelessWidget {
     );
   }
 
-  // Abre o Google Maps para navegação
   void _openMaps() async {
     if (location.latitude != null && location.longitude != null) {
       final url = 'https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}';
@@ -331,7 +320,6 @@ class LocationDetailPage extends StatelessWidget {
     }
   }
 
-  // Compartilha informações da localização
   void _shareLocation() {
     final String locationInfo = '''
     ${location.name} (${location.code})
@@ -342,7 +330,6 @@ class LocationDetailPage extends StatelessWidget {
     Compartilhado via UniGo
     ''';
     
-    // Usar plugin de compartilhamento aqui
     Get.snackbar(
       'Compartilhar',
       'Funcionalidade em desenvolvimento',
@@ -350,7 +337,6 @@ class LocationDetailPage extends StatelessWidget {
     );
   }
 
-  // Formata os tipos de localização para exibição
   String _formatLocationType(String type) {
     switch (type) {
       case 'classroom':

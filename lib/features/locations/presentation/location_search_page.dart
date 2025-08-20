@@ -25,7 +25,6 @@ class LocationSearchPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Barra de pesquisa
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -53,7 +52,6 @@ class LocationSearchPage extends StatelessWidget {
             ),
           ),
 
-          // Chips de filtros aplicados
           Obx(() {
             List<Widget> filterChips = [];
             
@@ -107,7 +105,6 @@ class LocationSearchPage extends StatelessWidget {
             );
           }),
 
-          // Lista de resultados
           Expanded(
             child: Obx(() {
               if (controller.isLoading.value) {
@@ -138,7 +135,6 @@ class LocationSearchPage extends StatelessWidget {
     );
   }
 
-  // Item de localização na lista
   Widget _buildLocationItem(BuildContext context, Location location) {
     final String subtitle = [
       if (location.block != null) 'Bloco ${location.block}',
@@ -187,7 +183,6 @@ class LocationSearchPage extends StatelessWidget {
     );
   }
 
-  // Diálogo de filtros
   void _showFilterDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -198,7 +193,6 @@ class LocationSearchPage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Filtro por tipo
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Tipo'),
                   value: controller.selectedType.value.isEmpty ? null : controller.selectedType.value,
@@ -215,7 +209,6 @@ class LocationSearchPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 
-                // Filtro por bloco
                 Obx(() => DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Bloco'),
                   value: controller.selectedBlock.value.isEmpty ? null : controller.selectedBlock.value,
@@ -232,7 +225,6 @@ class LocationSearchPage extends StatelessWidget {
                 )),
                 const SizedBox(height: 16),
                 
-                // Filtro por andar
                 TextField(
                   decoration: const InputDecoration(labelText: 'Piso'),
                   keyboardType: TextInputType.number,
@@ -269,7 +261,6 @@ class LocationSearchPage extends StatelessWidget {
     );
   }
 
-  // Formata os tipos de localização para exibição
   String _formatLocationType(String type) {
     switch (type) {
       case 'classroom':

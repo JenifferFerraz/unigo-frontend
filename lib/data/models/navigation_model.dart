@@ -2,8 +2,8 @@ import 'package:latlong2/latlong.dart';
 
 class NavigationRoute {
   final List<NavigationStep> steps;
-  final double totalDistance; // in meters
-  final int estimatedDuration; // in seconds
+  final double totalDistance; 
+  final int estimatedDuration; 
 
   NavigationRoute({
     required this.steps,
@@ -24,9 +24,9 @@ class NavigationStep {
   final String instruction;
   final LatLng startPoint;
   final LatLng endPoint;
-  final double distance; // in meters
-  final int duration; // in seconds
-  final String maneuver; // turn type: straight, left, right, etc.
+  final double distance; 
+  final int duration; 
+  final String maneuver; 
   final double? heading;
 
   NavigationStep({
@@ -52,19 +52,17 @@ class NavigationStep {
   }
 }
 
-// For accessibility features
 enum VoiceGuidanceLevel {
   off,
   basic,
   detailed,
 }
 
-// For tracking navigation progress
 class NavigationProgress {
   final int currentStepIndex;
-  final double distanceToNextStep; // in meters
-  final double distanceToDestination; // in meters
-  final int estimatedTimeRemaining; // in seconds
+  final double distanceToNextStep; 
+  final double distanceToDestination; 
+  final int estimatedTimeRemaining; 
 
   NavigationProgress({
     required this.currentStepIndex,

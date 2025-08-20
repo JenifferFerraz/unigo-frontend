@@ -45,7 +45,7 @@ class LocationSearch extends GetWidget<LocationService> {
           ),
         ),
         
-        // Resultados da pesquisa
+
         Obx(() {
           if (_isSearching.value) {
             return Container(
@@ -149,7 +149,7 @@ class LocationSearch extends GetWidget<LocationService> {
     );
   }
 
-  // Realizar pesquisa na API
+
   Future<void> _performSearch(String query) async {
     if (query.isEmpty) {
       _searchResults.clear();
