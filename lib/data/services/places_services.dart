@@ -11,7 +11,7 @@ class PlacesServices extends GetxService {
     'Secretaria Geral',
 
   ];
-
+ 
   Future<List<String>> search(String query) async {
     if (query.isEmpty) return [];
     

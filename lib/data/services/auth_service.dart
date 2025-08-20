@@ -30,6 +30,7 @@ class AuthService extends GetxService {
     super.onInit();
     fetchCourses();
   }
+  /// Inicializa o serviço carregando dados do usuário do armazenamento local
 
   Future<AuthService> init() async {
     final userData = await storage.getUserData();
@@ -38,6 +39,7 @@ class AuthService extends GetxService {
     }
     return this;
   }
+  /// Registra um novo usuário no sistema
 
   Future<bool> register({
     required String name,
@@ -104,6 +106,7 @@ class AuthService extends GetxService {
       isLoading.value = false;
     }
   }
+  /// Gerencia permissões de localização e aceitação de termos
 
   Future<bool> login({required String email, required String password}) async {
     try {
@@ -150,12 +153,14 @@ class AuthService extends GetxService {
       isLoading.value = false;
     }
   }
+  /// Limpa dados locais e redireciona para tela de login
 
   Future<void> logout() async {
     await storage.clearUserData();
     currentUser.value = null;
     Get.offAllNamed(AppRoutes.LOGIN);
   }
+  /// Solicita permissão de localização ao usuário
 
   void _requestLocationPermission() async {
     final status = await Permission.location.request();
@@ -170,8 +175,10 @@ class AuthService extends GetxService {
       );
     }
   }
+  /// Verifica se existe um usuário autenticado
 
   bool get isAuthenticated => currentUser.value != null;
+  /// Inicia o processo de redefinição de senha
 
   Future<bool> resetPassword({required String email}) async {
     try {

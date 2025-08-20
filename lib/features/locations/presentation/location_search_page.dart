@@ -225,6 +225,7 @@ class LocationSearchPage extends StatelessWidget {
                 )),
                 const SizedBox(height: 16),
                 
+                // Filtro por andar
                 TextField(
                   decoration: const InputDecoration(labelText: 'Piso'),
                   keyboardType: TextInputType.number,

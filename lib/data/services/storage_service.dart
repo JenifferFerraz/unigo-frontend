@@ -47,6 +47,7 @@ class StorageService extends GetxService {
     }
   }
 
+  /// Recupera dados do usuário do armazenamento seguro
   Future<Map<String, dynamic>?> getUserData() async {
     try {
       final userDataJson = await _storage.read(
@@ -83,6 +84,7 @@ class StorageService extends GetxService {
     return data?['refreshToken'];
   }
 
+  /// Remove todos os dados do usuário do armazenamento
   Future<void> clearUserData() async {
     try {
       await _storage.delete(

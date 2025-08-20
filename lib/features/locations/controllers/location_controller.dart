@@ -16,7 +16,6 @@ class LocationController extends GetxController {
   final RxString searchQuery = ''.obs;
   final RxString selectedType = ''.obs;
 
-
   final List<String> locationTypes = ['classroom', 'laboratory', 'library', 'block', 'building', 'cafeteria', 'auditorium', 'administrative', 'other'];
   
   @override
@@ -35,11 +34,9 @@ class LocationController extends GetxController {
     );
   }
 
-
   Future<void> loadUpcomingClasses() async {
     await _locationService.loadUpcomingClasses();
   }
-
 
   Future<void> applyFilters({String? type, String? block, int? floor, String? search}) async {
     if (type != null) selectedType.value = type;
@@ -49,7 +46,6 @@ class LocationController extends GetxController {
 
     await fetchLocations();
   }
-
 
   Future<void> clearFilters() async {
     selectedType.value = '';
