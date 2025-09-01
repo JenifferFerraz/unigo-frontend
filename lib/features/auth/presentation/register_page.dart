@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import '../../../core/atoms/inputs/text_input.dart';
 import '../../../core/atoms/inputs/dropdown_input.dart';
 import '../../../core/atoms/buttons/primary_button.dart';

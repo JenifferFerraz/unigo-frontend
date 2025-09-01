@@ -13,6 +13,9 @@ void main() async {
   await dotenv.load(fileName: ".env");
   await EnvService.init();
 
+  // Imprime informações do ambiente para debug
+  EnvService.printEnvironmentInfo();
+
   await Get.putAsync<StorageService>(() => StorageService().init());
   await Get.putAsync<AuthService>(() => AuthService().init());
   await Get.putAsync(() => LocationService().init());

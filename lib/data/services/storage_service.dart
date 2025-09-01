@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/user_model.dart';
 
 class StorageService extends GetxService {
@@ -12,6 +13,12 @@ class StorageService extends GetxService {
   final Rx<String?> token = Rx<String?>(null);
   Future<void> _loadToken() async {
     try {
+      if (kIsWeb) {
+        // Na web, não tenta carregar token do storage seguro
+        print('Storage seguro não suportado na web');
+        return;
+      }
+      
       final allData = await readAllUserData();
       final userData = allData['user_data'];
       if (userData != null) {
@@ -31,6 +38,12 @@ class StorageService extends GetxService {
 
   Future<void> saveUserData(Map<String, dynamic> userData) async {
     try {
+      if (kIsWeb) {
+        // Na web, não salva dados no storage seguro
+        print('Storage seguro não suportado na web');
+        return;
+      }
+      
       final userDataString = jsonEncode(userData);
       await _storage.write(
         key: 'user_data',
@@ -50,6 +63,12 @@ class StorageService extends GetxService {
   /// Recupera dados do usuário do armazenamento seguro
   Future<Map<String, dynamic>?> getUserData() async {
     try {
+      if (kIsWeb) {
+        // Na web, não recupera dados do storage seguro
+        print('Storage seguro não suportado na web');
+        return null;
+      }
+      
       final userDataJson = await _storage.read(
         key: 'user_data',
         aOptions: const AndroidOptions(
@@ -87,6 +106,12 @@ class StorageService extends GetxService {
   /// Remove todos os dados do usuário do armazenamento
   Future<void> clearUserData() async {
     try {
+      if (kIsWeb) {
+        // Na web, não limpa dados do storage seguro
+        print('Storage seguro não suportado na web');
+        return;
+      }
+      
       await _storage.delete(
         key: 'user_data',
         aOptions: const AndroidOptions(
@@ -103,6 +128,12 @@ class StorageService extends GetxService {
 
   Future<Map<String, String>> readAllUserData() async {
     try {
+      if (kIsWeb) {
+        // Na web, não lê dados do storage seguro
+        print('Storage seguro não suportado na web');
+        return {};
+      }
+      
       return await _storage.readAll(
         aOptions: const AndroidOptions(
           encryptedSharedPreferences: true,

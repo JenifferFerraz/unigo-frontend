@@ -244,8 +244,8 @@ class LocationDetailPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: FlutterMap(
               options: MapOptions(
-                center: latLng,
-                zoom: 17.0,
+                initialCenter: latLng,
+                initialZoom: 17.0,
               ),
               children: [
                 TileLayer(
@@ -253,7 +253,8 @@ class LocationDetailPage extends StatelessWidget {
                   subdomains: const ['a', 'b', 'c'],
                 ),
                 MarkerLayer(
-                  markers: [                    Marker(
+                  markers: [
+                    Marker(
                       width: 80.0,
                       height: 80.0,
                       point: latLng,

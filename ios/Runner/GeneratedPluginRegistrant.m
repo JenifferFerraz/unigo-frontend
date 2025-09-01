@@ -60,10 +60,22 @@
 @import image_picker_ios;
 #endif
 
-#if __has_include(<local_auth_darwin/FLALocalAuthPlugin.h>)
-#import <local_auth_darwin/FLALocalAuthPlugin.h>
+#if __has_include(<local_auth_darwin/LocalAuthPlugin.h>)
+#import <local_auth_darwin/LocalAuthPlugin.h>
 #else
 @import local_auth_darwin;
+#endif
+
+#if __has_include(<mobile_scanner/MobileScannerPlugin.h>)
+#import <mobile_scanner/MobileScannerPlugin.h>
+#else
+@import mobile_scanner;
+#endif
+
+#if __has_include(<package_info_plus/FPPPackageInfoPlusPlugin.h>)
+#import <package_info_plus/FPPPackageInfoPlusPlugin.h>
+#else
+@import package_info_plus;
 #endif
 
 #if __has_include(<path_provider_foundation/PathProviderPlugin.h>)
@@ -76,12 +88,6 @@
 #import <permission_handler_apple/PermissionHandlerPlugin.h>
 #else
 @import permission_handler_apple;
-#endif
-
-#if __has_include(<qr_code_scanner/FlutterQrPlugin.h>)
-#import <qr_code_scanner/FlutterQrPlugin.h>
-#else
-@import qr_code_scanner;
 #endif
 
 #if __has_include(<shared_preferences_foundation/SharedPreferencesPlugin.h>)
@@ -114,10 +120,11 @@
   [FLTGoogleMapsPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTGoogleMapsPlugin"]];
   [FLTGoogleSignInPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTGoogleSignInPlugin"]];
   [FLTImagePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTImagePickerPlugin"]];
-  [FLALocalAuthPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLALocalAuthPlugin"]];
+  [LocalAuthPlugin registerWithRegistrar:[registry registrarForPlugin:@"LocalAuthPlugin"]];
+  [MobileScannerPlugin registerWithRegistrar:[registry registrarForPlugin:@"MobileScannerPlugin"]];
+  [FPPPackageInfoPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPPackageInfoPlusPlugin"]];
   [PathProviderPlugin registerWithRegistrar:[registry registrarForPlugin:@"PathProviderPlugin"]];
   [PermissionHandlerPlugin registerWithRegistrar:[registry registrarForPlugin:@"PermissionHandlerPlugin"]];
-  [FlutterQrPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterQrPlugin"]];
   [SharedPreferencesPlugin registerWithRegistrar:[registry registrarForPlugin:@"SharedPreferencesPlugin"]];
   [SqflitePlugin registerWithRegistrar:[registry registrarForPlugin:@"SqflitePlugin"]];
   [URLLauncherPlugin registerWithRegistrar:[registry registrarForPlugin:@"URLLauncherPlugin"]];

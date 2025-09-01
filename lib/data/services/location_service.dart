@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:latlong2/latlong.dart';
 import '../providers/location_provider.dart';
 import '../models/location_model.dart';
@@ -25,16 +26,29 @@ class LocationService extends GetxService {
 
   Future<LocationService> init() async {
     try {
-      isLocationEnabled.value = await Geolocator.isLocationServiceEnabled();
+      if (kIsWeb) {
+        // Na web, não tenta usar geolocalização
+        isLocationEnabled.value = false;
+        print('Serviço de localização inicializado para web (geolocalização desabilitada)');
+      } else {
+        isLocationEnabled.value = await Geolocator.isLocationServiceEnabled();
+      }
       await getBlocks();
     } catch (e) {
       print('Erro ao inicializar serviço de localização: $e');
+      isLocationEnabled.value = false;
     }
     return this;
   }
 
   Future<bool> requestLocationPermission() async {
     try {
+      if (kIsWeb) {
+        // Na web, não tenta usar geolocalização
+        print('Geolocalização não suportada na web');
+        return false;
+      }
+      
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -53,6 +67,12 @@ class LocationService extends GetxService {
 
   Future<Position?> getCurrentLocation() async {
     try {
+      if (kIsWeb) {
+        // Na web, não tenta usar geolocalização
+        print('Geolocalização não suportada na web');
+        return null;
+      }
+      
       final position = await Geolocator.getCurrentPosition();
       currentPosition.value = position;
       return position;
@@ -128,6 +148,11 @@ class LocationService extends GetxService {
   }
 
   double calculateDistance(double destLat, double destLng) {
+    if (kIsWeb) {
+      // Na web, não calcula distância real
+      return 0;
+    }
+    
     if (currentPosition.value == null) return 0;
     
     return Geolocator.distanceBetween(
@@ -140,6 +165,12 @@ class LocationService extends GetxService {
   
   Future<bool> startNavigation(Location destination) async {
     try {
+      if (kIsWeb) {
+        // Na web, não inicia navegação real
+        error.value = 'Navegação não suportada na web';
+        return false;
+      }
+      
       if (currentPosition.value == null) {
         await requestLocationPermission();
       }

@@ -9,6 +9,7 @@ import '../models/user_model.dart';
 import '../../core/config/env_service.dart';
 import 'dart:convert';
 import './location_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthService extends GetxService {
   final StorageService storage = Get.find<StorageService>();
@@ -163,6 +164,13 @@ class AuthService extends GetxService {
   /// Solicita permissão de localização ao usuário
 
   void _requestLocationPermission() async {
+    if (kIsWeb) {
+      // Na web, não solicita permissão de localização
+      print('Permissão de localização não suportada na web');
+      Get.offAllNamed(AppRoutes.HOME);
+      return;
+    }
+    
     final status = await Permission.location.request();
     if (status.isGranted) {
       Get.offAllNamed(AppRoutes.HOME); 

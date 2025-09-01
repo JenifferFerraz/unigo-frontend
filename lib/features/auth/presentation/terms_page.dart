@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../routes/app_routes.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../../core/atoms/inputs/text_input.dart';
 import '../../../core/atoms/buttons/primary_button.dart';
 import '../../../data/services/auth_service.dart';
