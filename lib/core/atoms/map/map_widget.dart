@@ -8,6 +8,8 @@ import '../../../data/services/location_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class MapWidget extends StatelessWidget {
+  // Estado para destino selecionado
+  static LatLng? _selectedDestination;
   LocationService get locationService => Get.find<LocationService>();
   final double zoom;
   final bool showUserLocation;
@@ -141,32 +143,67 @@ class MapWidget extends StatelessWidget {
                     center: center,
                     zoom: zoom,
                     maxZoom: 22,
+                    onTap: (tapPos, latlng) {
+                      _selectedDestination = latlng;
+                      // Força rebuild
+                      (context as Element).markNeedsBuild();
+                    },
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+                      subdomains: ['a', 'b', 'c'],
                       userAgentPackageName: 'com.example.app',
                     ),
                     PolygonLayer(polygons: polygons),
                     PolylineLayer(polylines: polylines),
-                    MarkerLayer(markers: markers),
-                    if (showUserLocation && position != null)
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: center,
-                            child: const Icon(
-                              Icons.location_on,
-                              color: Colors.blue,
-                              size: 40,
+                    MarkerLayer(markers: [
+                      ...markers,
+                      if (showUserLocation && position != null)
+                        Marker(
+                          point: center,
+                          width: 40,
+                          height: 40,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.3),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.blue, width: 4),
+                            ),
+                            child: Center(
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      if (_selectedDestination != null)
+                        Marker(
+                          point: _selectedDestination!,
+                          width: 40,
+                          height: 40,
+                          child: Icon(Icons.location_on, color: Colors.red, size: 40),
+                        ),
+                    ]),
                   ],
                 );
               });
             },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            'Map tiles by Stamen, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            textAlign: TextAlign.center,
           ),
         ),
       ],

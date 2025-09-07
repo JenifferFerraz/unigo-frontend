@@ -130,6 +130,11 @@ class AuthService extends GetxService {
         }
 
         await handleLocationPermission();
+        // Inicializa LocationService após login
+        if (Get.isRegistered<LocationService>()) {
+          await Get.delete<LocationService>();
+        }
+        await Get.putAsync(() => LocationService().init());
         return true;
       }
       
@@ -219,10 +224,15 @@ class AuthService extends GetxService {
 
   Future<void> handleLocationPermission() async {
     try {
-      final locationService = Get.find<LocationService>();
-      final hasPermission = await locationService.requestLocationPermission();
-      
-      if (hasPermission) {
+      // Aguarda LocationService estar registrado
+      LocationService? locationService;
+      if (Get.isRegistered<LocationService>()) {
+        locationService = Get.find<LocationService>();
+      } else {
+        locationService = await Get.putAsync(() => LocationService().init());
+      }
+      final hasPermission = await locationService?.requestLocationPermission();
+      if (hasPermission == true) {
         Get.offAllNamed('/home');
       } else {
         Get.snackbar(

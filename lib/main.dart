@@ -15,7 +15,6 @@ void main() async {
 
   await Get.putAsync<StorageService>(() => StorageService().init());
   await Get.putAsync<AuthService>(() => AuthService().init());
-  await Get.putAsync(() => LocationService().init());
   Get.put(UploadImagensService());
 
   runApp(const MyApp());

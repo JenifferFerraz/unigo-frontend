@@ -29,7 +29,23 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<LocationService>();
+    LocationService? controller;
+    try {
+      controller = Get.find<LocationService>();
+    } catch (e) {
+      controller = null;
+    }
+    // Se não existe, inicializa de forma assíncrona e pede permissão
+    if (controller == null) {
+      Future.microtask(() async {
+        final loc = await Get.putAsync(() => LocationService().init());
+        await loc.requestLocationPermission();
+        setState(() {});
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
       appBar: AppBar(
@@ -94,51 +110,10 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: "btnLocation",
-            onPressed: () => controller.getCurrentLocation(),
+            onPressed: () => controller?.getCurrentLocation(),
             child: const Icon(Icons.my_location),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuickButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

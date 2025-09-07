@@ -19,8 +19,6 @@ dependencies:
   google_maps_flutter: ^2.5.0
   google_sign_in: ^6.1.6
   flutter_facebook_auth: ^7.1.1
-  qr_code_scanner: ^1.0.1
-  flutter_local_notifications: ^16.3.0
   local_auth: ^2.1.8
 
   flutter_svg: ^2.0.9

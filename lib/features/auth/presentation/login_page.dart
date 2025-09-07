@@ -14,7 +14,6 @@ class LoginPage extends GetView<AuthService> {
   Widget build(BuildContext context) {
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
-    final locationService = Get.find<LocationService>();
 
     return Scaffold(
       backgroundColor: AppColors.primary,
