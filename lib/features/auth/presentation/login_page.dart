@@ -3,17 +3,52 @@ import 'package:get/get.dart';
 import '../../../core/atoms/inputs/text_input.dart';
 import '../../../core/atoms/buttons/primary_button.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/services/location_service.dart';
 import '../../../routes/app_routes.dart';
 import '../../../core/constants/app_colors.dart';
 
-class LoginPage extends GetView<AuthService> {
+class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
   @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  late final AuthService auth;
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool _canSubmit = false;
+
+  @override
+  void initState() {
+    super.initState();
+    auth = Get.find<AuthService>();
+    emailController.addListener(_recomputeValidity);
+    passwordController.addListener(_recomputeValidity);
+  }
+
+  @override
+  void dispose() {
+    emailController.removeListener(_recomputeValidity);
+    passwordController.removeListener(_recomputeValidity);
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  void _recomputeValidity() {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final emailOk = RegExp(r'^.+@.+\..+$').hasMatch(email);
+    final passOk = password.isNotEmpty && password.length >= 6;
+    final next = emailOk && passOk;
+    if (next != _canSubmit) {
+      setState(() => _canSubmit = next);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
 
     return Scaffold(
       backgroundColor: AppColors.primary,
@@ -26,7 +61,7 @@ class LoginPage extends GetView<AuthService> {
               children: [
                 const SizedBox(height: 48),
                 Image.asset(
-                  'assets/images/Logo.png',
+                  'assets/images/logo.png',
                   height: 120,
                 ),
                 const SizedBox(height: 48),
@@ -64,10 +99,15 @@ class LoginPage extends GetView<AuthService> {
                       const SizedBox(height: 32),
                       Obx(() => PrimaryButton(
                         text: 'Entrar',
-                        isLoading: controller.isLoading.value,
+                        isLoading: auth.isLoading.value,
+                        enabled: _canSubmit,
                         onPressed: () async {
-                          final success = await controller.login(
-                            email: emailController.text,
+                          if (!_canSubmit) {
+                            Get.snackbar('Campos inválidos', 'Preencha email válido e senha (mín. 6 caracteres).', snackPosition: SnackPosition.BOTTOM);
+                            return;
+                          }
+                          await auth.login(
+                            email: emailController.text.trim(),
                             password: passwordController.text,
                           );
                         },

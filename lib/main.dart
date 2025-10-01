@@ -7,6 +7,7 @@ import 'data/services/auth_service.dart';
 import 'data/services/storage_service.dart';
 import 'data/services/location_service.dart';
 import 'data/services/upload_image_services.dart';
+import 'data/services/biometric_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,7 @@ void main() async {
 
   await Get.putAsync<StorageService>(() => StorageService().init());
   await Get.putAsync<AuthService>(() => AuthService().init());
+  await Get.putAsync<BiometricService>(() => BiometricService().init());
   Get.put(UploadImagensService());
 
   runApp(const MyApp());

@@ -23,7 +23,7 @@ class ResetPasswordPage extends GetView<AuthService> {
               children: [
                 const SizedBox(height: 48),
                 Image.asset(
-                  'assets/images/Logo.png',
+                  'assets/images/logo.png',
                   height: 120,
                 ),
                 const SizedBox(height: 48),

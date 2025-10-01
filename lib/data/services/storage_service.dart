@@ -115,4 +115,39 @@ class StorageService extends GetxService {
       return {};
     }
   }
+
+  /// Preferência: biometria habilitada
+  Future<void> saveBiometricPreference(bool enabled) async {
+    try {
+      await _storage.write(
+        key: 'biometric_enabled',
+        value: enabled ? '1' : '0',
+        aOptions: const AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+        iOptions: const IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<bool> getBiometricPreference() async {
+    try {
+      final value = await _storage.read(
+        key: 'biometric_enabled',
+        aOptions: const AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+        iOptions: const IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+        ),
+      );
+      return value == '1';
+    } catch (e) {
+      return false;
+    }
+  }
 }
