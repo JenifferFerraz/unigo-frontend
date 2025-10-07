@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/atoms/inputs/text_input.dart';
 import '../../../core/atoms/buttons/primary_button.dart';
 import '../../../data/services/auth_service.dart';

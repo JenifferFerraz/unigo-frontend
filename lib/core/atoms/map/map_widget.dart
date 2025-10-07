@@ -135,9 +135,11 @@ class MapWidget extends StatelessWidget {
 
               return Obx(() {
                 final position = locationService.currentPosition.value;
+                print('[MapWidget] currentPosition: $position');
                 final center = position != null
                     ? LatLng(position.latitude, position.longitude)
                     : LatLng(-16.294387, -48.944379);
+                print('[MapWidget] center usado no mapa: $center');
                 return FlutterMap(
                   options: MapOptions(
                     center: center,

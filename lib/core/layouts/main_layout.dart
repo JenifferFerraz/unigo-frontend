@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../features/home/presentation/components/sidebar.dart';
 
 class MainLayout extends StatelessWidget {
@@ -40,7 +41,7 @@ class MainLayout extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Image.asset(
-                  'assets/images/logo.png',
+                  'assets/images/Logo.png',
                   height: 32,
                   color: Colors.white,
                 ),

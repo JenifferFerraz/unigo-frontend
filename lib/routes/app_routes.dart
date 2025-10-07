@@ -8,9 +8,11 @@ import '../features/home/home_binding.dart';
 import '../data/middleware/auth_middleware.dart';
 import '../features/splash/presentation/splash_page.dart';
 import '../features/schedule/presentation/schedule_page.dart';
+import '../features/calendar/presentation/calendar_page.dart';
 import '../features/locations/presentation/location_search_page.dart';
 import '../features/locations/presentation/class_notifications_page.dart';
 import '../features/locations/location_binding.dart';
+import '../features/exams/presentation/exams_page.dart';
 
 abstract class AppRoutes {
   static const INITIAL = '/';
@@ -22,10 +24,10 @@ abstract class AppRoutes {
   static const PROFILE = '/profile';
   static const SCHEDULE = '/schedule';
   static const EVENTS = '/events';
+  static const CALENDAR = '/calendar';
   static const EXAMS = '/exams';
   static const RESET_PASSWORD = '/reset-password';
   static const LOCATION_SEARCH = '/location-search';
-  static const CLASS_NOTIFICATIONS = '/class-notifications';
 
   static final pages = [
     GetPage(
@@ -57,21 +59,26 @@ abstract class AppRoutes {
       page: () => const HomePage(),
       binding: HomeBinding(),
       middlewares: [AuthMiddleware()],
-    ),    GetPage(
+    ),
+    GetPage(
       name: SCHEDULE,
       page: () => SchedulePage(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: LOCATION_SEARCH,
-      page: () => LocationSearchPage(),
-      binding: LocationBinding(),
+      page: () => const HomePage(showSearch: true),
+      binding: HomeBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
-      name: CLASS_NOTIFICATIONS,
-      page: () => ClassNotificationsPage(),
-      binding: LocationBinding(),
+      name: CALENDAR,
+      page: () => CalendarPage(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: EXAMS,
+      page: () => ExamsPage(),
       middlewares: [AuthMiddleware()],
     ),
   ];

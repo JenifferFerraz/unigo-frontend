@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/atoms/map/map_widget.dart';
 import '../../../data/services/location_service.dart';
 import '../../../routes/app_routes.dart';
 import './components/sidebar.dart';
 import './components/location_search.dart';
 
+
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  final bool showSearch;
+  const HomePage({Key? key, this.showSearch = false}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -32,20 +35,34 @@ class _HomePageState extends State<HomePage> {
     LocationService? controller;
     try {
       controller = Get.find<LocationService>();
+      print('[HomePage] LocationService encontrado. currentPosition: \\${controller.currentPosition.value}');
     } catch (e) {
+      print('[HomePage] Erro ao buscar LocationService: $e');
       controller = null;
     }
-    // Se não existe, inicializa de forma assíncrona e pede permissão
     if (controller == null) {
       Future.microtask(() async {
         final loc = await Get.putAsync(() => LocationService().init());
-        await loc.requestLocationPermission();
+        final hasPermission = await loc.requestLocationPermission();
+        print('[HomePage] Permissão localização: $hasPermission');
+        if (hasPermission == true) {
+          await loc.getCurrentLocation();
+          print('[HomePage] Localização obtida: \\${loc.currentPosition.value}');
+        }
         setState(() {});
       });
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    Future.microtask(() async {
+      final hasPermission = await controller?.requestLocationPermission();
+      print('[HomePage] Permissão localização (controller): $hasPermission');
+      if (hasPermission == true) {
+        await controller?.getCurrentLocation();
+        print('[HomePage] Localização obtida (controller): \\${controller?.currentPosition.value}');
+      }
+    });
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
       appBar: AppBar(
@@ -60,14 +77,10 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () => Get.toNamed(AppRoutes.CLASS_NOTIFICATIONS),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Image.asset(
-              'assets/images/logo.png',
+              'assets/images/Logo.png',
               height: 32,
               color: Colors.white,
             ),
@@ -83,12 +96,13 @@ class _HomePageState extends State<HomePage> {
               selectedLayer: _selectedLayer,
             ),
           ),
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: LocationSearch(),
-          ),    
+          if (widget.showSearch)
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: LocationSearch(),
+            ),
         ],
       ),
       floatingActionButton: Column(
