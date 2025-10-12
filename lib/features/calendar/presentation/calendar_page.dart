@@ -1,36 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../data/services/exam_service.dart';
 import '../../home/presentation/components/sidebar.dart';
 
-class CalendarPage extends StatelessWidget {
+class CalendarPage extends StatefulWidget {
   const CalendarPage({Key? key}) : super(key: key);
 
   @override
+  State<CalendarPage> createState() => _CalendarPageState();
+}
+
+class _CalendarPageState extends State<CalendarPage> {
+  final ExamService _examService = ExamService();
+  Map<int, List<Map<String, dynamic>>> _eventsByDay = {};
+  int _selectedDay = DateTime.now().day;
+  bool _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExams();
+  }
+
+  Future<void> _loadExams() async {
+    try {
+      final exams = await _examService.getExams();
+      final Map<int, List<Map<String, dynamic>>> map = {};
+      for (final e in exams) {
+        final dateStr = e['date'] as String? ?? '';
+        // Expecting dd/MM/yyyy or dd/MM
+        final parts = dateStr.split('/');
+        if (parts.isEmpty) continue;
+        final day = int.tryParse(parts[0].padLeft(1, '0')) ?? null;
+        if (day == null) continue;
+        map.putIfAbsent(day, () => []).add(e);
+      }
+      setState(() {
+        _eventsByDay = map;
+      });
+    } catch (err) {
+      // ignore errors for now
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final selectedDay = 9; // Exemplo: dia 9 destacado
-    final events = [
-      {
-        'date': '03/10',
-        'title': 'Último prazo para lançamento das notas de 1ª VA no Lyceum',
-      },
-      {
-        'date': '10/10',
-        'title': 'Último prazo para lançamento da frequência de setembro no Lyceum',
-      },
-      {
-        'date': '12/10',
-        'title': 'Feriado Nacional',
-      },
-      {
-        'date': '15/10',
-        'title': 'Dia do Professor',
-      },
-      {
-        'date': '20 a 23/10',
-        'title': 'VI Congresso Internacional de Pesquisa, Ensino e Extensão (CIPEEX)',
-      },
-    ];
+    final selectedEvents = _eventsByDay[_selectedDay] ?? [];
 
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
@@ -42,7 +57,7 @@ class CalendarPage extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: Icon(Icons.emoji_events, color: Colors.white, size: 32), // Substitua por logo se quiser
+            child: Icon(Icons.emoji_events, color: Colors.white, size: 32),
           ),
         ],
       ),
@@ -115,19 +130,41 @@ class CalendarPage extends StatelessWidget {
                         itemCount: 31,
                         itemBuilder: (context, i) {
                           final day = i + 1;
-                          final isSelected = day == selectedDay;
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: isSelected ? Color(0xFF3C3CC0) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$day',
-                                style: TextStyle(
-                                  color: isSelected ? Colors.white : Colors.black,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                ),
+                          final hasEvent = _eventsByDay.containsKey(day);
+                          final isSelected = day == _selectedDay;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedDay = day;
+                                _expanded = false;
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isSelected ? Color(0xFF3C3CC0) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '$day',
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.black,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (hasEvent)
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? Colors.white : Color(0xFF3C3CC0),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           );
@@ -137,26 +174,45 @@ class CalendarPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                ...events.map((event) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        event['date']!,
-                        style: TextStyle(
-                          color: Color(0xFF3C3CC0),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
+
+                // Selected day events
+                Text(
+                  'Provas em $_selectedDay/10/2025',
+                  style: TextStyle(color: Color(0xFF3C3CC0), fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 8),
+                if (selectedEvents.isEmpty)
+                  const Text('Não há provas programadas para esta data.'),
+                if (selectedEvents.isNotEmpty) ...[
+                  for (int i = 0; i < selectedEvents.length && (i < 3 || _expanded); i++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(selectedEvents[i]['subject'] ?? '', style: const TextStyle(fontSize: 15)),
+                              Text(selectedEvents[i]['time'] ?? '', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                            ],
+                          ),
+                          Text(selectedEvents[i]['grade'] ?? '', style: const TextStyle(fontSize: 15)),
+                        ],
                       ),
-                      Text(
-                        event['title']!,
-                        style: TextStyle(fontSize: 14),
-                      ),
-                    ],
-                  ),
-                )),
+                    ),
+                  if (selectedEvents.length > 3 && !_expanded)
+                    TextButton(
+                      onPressed: () => setState(() => _expanded = true),
+                      child: Text('Mostrar mais (${selectedEvents.length - 3})'),
+                    ),
+                  if (_expanded)
+                    TextButton(
+                      onPressed: () => setState(() => _expanded = false),
+                      child: const Text('Mostrar menos'),
+                    ),
+                ],
+
                 const SizedBox(height: 8),
                 Center(
                   child: Icon(Icons.keyboard_arrow_down, color: Color(0xFF3C3CC0)),
