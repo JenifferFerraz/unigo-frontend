@@ -87,7 +87,8 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      drawer: Sidebar(),      body: Stack(
+      drawer: Sidebar(),
+      body: Stack(
         children: [
           SizedBox.expand(
             child: MapWidget(

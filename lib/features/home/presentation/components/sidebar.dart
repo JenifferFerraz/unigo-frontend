@@ -21,6 +21,7 @@ class Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isVisitor = (Get.arguments != null && Get.arguments['visitor'] == true);
     return Drawer(
       child: Container(
         color: const Color(0xFF3C3CC0),
@@ -28,7 +29,6 @@ class Sidebar extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Logo/ícone no topo à direita
               Padding(
                 padding: const EdgeInsets.only(top: 16.0, right: 16.0, bottom: 8.0),
                 child: Align(
@@ -42,71 +42,72 @@ class Sidebar extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // Menu vertical com linhas separadoras
-              _buildMenuItem(
-                icon: Icons.location_on,
-                title: 'Localização',
-                onTap: () {
-                  Get.back();
-                  Get.toNamed(AppRoutes.LOCATION_SEARCH);
-                },
-              ),
-              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
-              _buildMenuItem(
-                icon: Icons.schedule,
-                title: 'Horário de Aulas',
-                onTap: () {
-                  Get.back();
-                  Get.toNamed(AppRoutes.SCHEDULE);
-                },
-              ),
-              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
-              _buildMenuItem(
-                icon: Icons.event_note,
-                title: 'Eventos',
-                onTap: () {
-                  Get.back();
-                  // Navegação futura
-                },
-              ),
-              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
-              _buildMenuItem(
-                icon: Icons.calendar_today,
-                title: 'Calendário',
-                onTap: () {
-                  Get.back();
-                  Get.toNamed(AppRoutes.CALENDAR);
-                },
-              ),
-              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
-              _buildMenuItem(
-                icon: Icons.assignment,
-                title: 'Provas',
-                onTap: () {
-                  Get.back();
-                  Get.toNamed(AppRoutes.EXAMS);
-                },
-              ),
+              if (!isVisitor) ...[
+                _buildMenuItem(
+                  icon: Icons.location_on,
+                  title: 'Localização',
+                  onTap: () {
+                    Get.back();
+                    Get.toNamed(AppRoutes.LOCATION_SEARCH);
+                  },
+                ),
+                const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+                _buildMenuItem(
+                  icon: Icons.schedule,
+                  title: 'Horário de Aulas',
+                  onTap: () {
+                    Get.back();
+                    Get.toNamed(AppRoutes.SCHEDULE);
+                  },
+                ),
+                const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+                _buildMenuItem(
+                  icon: Icons.event_note,
+                  title: 'Eventos',
+                  onTap: () {
+                    Get.back();
+                    // Navegação futura
+                  },
+                ),
+                const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+                _buildMenuItem(
+                  icon: Icons.calendar_today,
+                  title: 'Calendário',
+                  onTap: () {
+                    Get.back();
+                    Get.toNamed(AppRoutes.CALENDAR);
+                  },
+                ),
+                const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+                _buildMenuItem(
+                  icon: Icons.assignment,
+                  title: 'Provas',
+                  onTap: () {
+                    Get.back();
+                    Get.toNamed(AppRoutes.EXAMS);
+                  },
+                ),
+              ],
               const Spacer(),
               Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  _authService.logout();
-                  Get.offAllNamed(AppRoutes.LOGIN);
-                },
-                icon: const Icon(Icons.logout),
-                label: const Text('Sair'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF3C3CC0),
-                  minimumSize: const Size(double.infinity, 45),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                padding: const EdgeInsets.all(16.0),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    _authService.logout();
+                    Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
+                  },
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sair'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF3C3CC0),
+                    minimumSize: const Size(double.infinity, 45),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-            ),
             ],
           ),
         ),

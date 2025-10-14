@@ -13,9 +13,11 @@ import '../features/locations/presentation/location_search_page.dart';
 import '../features/locations/presentation/class_notifications_page.dart';
 import '../features/locations/location_binding.dart';
 import '../features/exams/presentation/exams_page.dart';
+import '../features/auth/presentation/access_selection_page.dart';
 
 abstract class AppRoutes {
   static const INITIAL = '/';
+  static const ACCESS_SELECTION = '/access-selection';
   static const SPLASH = '/splash';
   static const LOGIN = '/login';
   static const REGISTER = '/register';
@@ -30,6 +32,10 @@ abstract class AppRoutes {
   static const LOCATION_SEARCH = '/location-search';
 
   static final pages = [
+    GetPage(
+      name: INITIAL,
+      page: () => const AccessSelectionPage(),
+    ),
     GetPage(
       name: SPLASH,
       page: () => const SplashPage(),
@@ -58,7 +64,7 @@ abstract class AppRoutes {
       name: HOME,
       page: () => const HomePage(),
       binding: HomeBinding(),
-      middlewares: [AuthMiddleware()],
+      // Remove AuthMiddleware so visitor can access
     ),
     GetPage(
       name: SCHEDULE,
