@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'dart:convert';
 import '../../../../data/services/auth_service.dart';
 import '../../../../routes/app_routes.dart';
 
@@ -83,6 +82,14 @@ class Sidebar extends StatelessWidget {
               icon: Icons.assignment,
               title: 'Provas',
               onTap: () => Get.back(),
+            ),
+            _buildMenuItem(
+              icon: Icons.feedback,
+              title: 'Feedback',
+              onTap: () {
+                Get.back();
+                Get.toNamed(AppRoutes.FEEDBACK);
+              },
             ),
 
             const Spacer(),

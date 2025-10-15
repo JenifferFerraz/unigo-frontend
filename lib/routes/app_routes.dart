@@ -10,6 +10,7 @@ import '../features/splash/presentation/splash_page.dart';
 import '../features/schedule/presentation/schedule_page.dart';
 import '../features/locations/presentation/location_search_page.dart';
 import '../features/locations/presentation/class_notifications_page.dart';
+import '../features/feedback/presentation/feedback_page.dart';
 import '../features/locations/location_binding.dart';
 
 abstract class AppRoutes {
@@ -23,6 +24,7 @@ abstract class AppRoutes {
   static const SCHEDULE = '/schedule';
   static const EVENTS = '/events';
   static const EXAMS = '/exams';
+  static const FEEDBACK = '/feedback';
   static const RESET_PASSWORD = '/reset-password';
   static const LOCATION_SEARCH = '/location-search';
   static const CLASS_NOTIFICATIONS = '/class-notifications';
@@ -72,6 +74,11 @@ abstract class AppRoutes {
       name: CLASS_NOTIFICATIONS,
       page: () => ClassNotificationsPage(),
       binding: LocationBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: FEEDBACK,
+      page: () => const FeedbackPage(),
       middlewares: [AuthMiddleware()],
     ),
   ];
