@@ -17,6 +17,19 @@ class GuestMiddleware extends GetMiddleware {
   @override
   RouteSettings? redirect(String? route) {
     final authService = Get.find<AuthService>();
+    if (Get.arguments != null && Get.arguments['visitor'] == true) {
+      Get.put<bool>(true, tag: 'visitor'); 
+    } else {
+      if (Get.isRegistered<bool>(tag: 'visitor')) {
+        Get.delete<bool>(tag: 'visitor');
+      }
+    }
+    bool isVisitor() => Get.isRegistered<bool>(tag: 'visitor') && Get.find<bool>(tag: 'visitor');
+    bool isAdmin() {
+      final authService = Get.isRegistered<AuthService>() ? Get.find<AuthService>() : null;
+      return authService?.currentUser.value?.role == 'admin';
+    }
+   
     return authService.currentUser.value != null
         ? RouteSettings(name: AppRoutes.HOME)
         : null;

@@ -7,10 +7,9 @@ import 'package:flutter/services.dart' show rootBundle;
 import '../../../data/services/location_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-class MapWidget extends StatelessWidget {
+class MapWidget extends StatefulWidget {
   // Estado para destino selecionado
   static LatLng? _selectedDestination;
-  LocationService get locationService => Get.find<LocationService>();
   final double zoom;
   final bool showUserLocation;
   final int selectedLayer;
@@ -22,9 +21,24 @@ class MapWidget extends StatelessWidget {
     this.selectedLayer = 0,
   }) : super(key: key);
 
+  @override
+  _MapWidgetState createState() => _MapWidgetState();
+
+  }
+
+class _MapWidgetState extends State<MapWidget> {
+  LocationService get locationService => Get.find<LocationService>();
+  final MapController _mapController = MapController();
+  bool _hasCenteredOnce = false;
   Future<Map<String, dynamic>> loadGeoJson(String file) async {
     final geojsonStr = await rootBundle.loadString(file);
     return json.decode(geojsonStr);
+  }
+
+  @override
+  void dispose() {
+    // nothing to dispose on controller, but keep for future
+    super.dispose();
   }
 
   @override
@@ -44,7 +58,7 @@ class MapWidget extends StatelessWidget {
               final geojsons = snapshot.data ?? [];
               final colors = [Colors.red, Colors.green, Colors.blue];
 
-              final int i = selectedLayer % geojsons.length;
+              final int i = widget.selectedLayer % geojsons.length;
               final geojson = geojsons.isNotEmpty ? geojsons[i] : null;
               final color = colors[i % colors.length];
               final List<Marker> markers = [];
@@ -135,16 +149,33 @@ class MapWidget extends StatelessWidget {
 
               return Obx(() {
                 final position = locationService.currentPosition.value;
+                print('[MapWidget] currentPosition: $position');
                 final center = position != null
                     ? LatLng(position.latitude, position.longitude)
                     : LatLng(-16.294387, -48.944379);
+                print('[MapWidget] center usado no mapa: $center');
+
+                // If we have the user's position and haven't centered yet, move the map controller
+                if (position != null && !_hasCenteredOnce) {
+                  // Schedule movement after current frame to ensure map controller is ready
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    try {
+                      _mapController.move(center, widget.zoom);
+                    } catch (e) {
+                      print('[MapWidget] erro ao mover o mapa (postFrame): $e');
+                    }
+                  });
+                  _hasCenteredOnce = true;
+                }
+
                 return FlutterMap(
+                  mapController: _mapController,
                   options: MapOptions(
                     center: center,
-                    zoom: zoom,
+                    zoom: widget.zoom,
                     maxZoom: 22,
-                    onTap: (tapPos, latlng) {
-                      _selectedDestination = latlng;
+                      onTap: (tapPos, latlng) {
+                      MapWidget._selectedDestination = latlng;
                       // Força rebuild
                       (context as Element).markNeedsBuild();
                     },
@@ -159,7 +190,7 @@ class MapWidget extends StatelessWidget {
                     PolylineLayer(polylines: polylines),
                     MarkerLayer(markers: [
                       ...markers,
-                      if (showUserLocation && position != null)
+                      if (widget.showUserLocation && position != null)
                         Marker(
                           point: center,
                           width: 40,
@@ -184,9 +215,9 @@ class MapWidget extends StatelessWidget {
                             ),
                           ),
                         ),
-                      if (_selectedDestination != null)
+                      if (MapWidget._selectedDestination != null)
                         Marker(
-                          point: _selectedDestination!,
+                          point: MapWidget._selectedDestination!,
                           width: 40,
                           height: 40,
                           child: Icon(Icons.location_on, color: Colors.red, size: 40),

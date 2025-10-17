@@ -163,7 +163,7 @@ class AuthService extends GetxService {
   Future<void> logout() async {
     await storage.clearUserData();
     currentUser.value = null;
-    Get.offAllNamed(AppRoutes.LOGIN);
+    Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
   }
   /// Solicita permissão de localização ao usuário
 

@@ -1,16 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:convert';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../routes/app_routes.dart';
 
 class Sidebar extends StatelessWidget {
+  Widget _buildMenuItem({required IconData icon, required String title, required VoidCallback onTap}) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      hoverColor: Colors.white24,
+    );
+  }
   final AuthService _authService = Get.find<AuthService>();
 
   Sidebar({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final isVisitor = (Get.arguments != null && Get.arguments['visitor'] == true);
     return Drawer(
       child: Container(
         color: const Color(0xFF3C3CC0),
@@ -58,14 +69,6 @@ class Sidebar extends StatelessWidget {
                 Get.toNamed(AppRoutes.LOCATION_SEARCH);
               },
             ),
-            _buildMenuItem(
-              icon: Icons.notifications,
-              title: 'Minhas Aulas',
-              onTap: () {
-                Get.back();
-                Get.toNamed(AppRoutes.CLASS_NOTIFICATIONS);
-              },
-            ),            
             _buildMenuItem(
               icon: Icons.schedule,
               title: 'Horário de Aulas',
@@ -116,24 +119,6 @@ class Sidebar extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-        ),
-      ),
-      onTap: onTap,
     );
   }
 }

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/atoms/map/map_widget.dart';
 import '../../../data/services/location_service.dart';
 import '../../../routes/app_routes.dart';
 import './components/sidebar.dart';
 import './components/location_search.dart';
 
+
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  final bool showSearch;
+  const HomePage({Key? key, this.showSearch = false}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -29,52 +32,65 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+  final isVisitor = (Get.arguments != null && Get.arguments['visitor'] == true);
+
     LocationService? controller;
     try {
       controller = Get.find<LocationService>();
     } catch (e) {
       controller = null;
     }
-    // Se não existe, inicializa de forma assíncrona e pede permissão
     if (controller == null) {
       Future.microtask(() async {
         final loc = await Get.putAsync(() => LocationService().init());
-        await loc.requestLocationPermission();
+        final hasPermission = await loc.requestLocationPermission();
+        if (hasPermission == true) {
+          await loc.getCurrentLocation();
+        }
         setState(() {});
       });
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    Future.microtask(() async {
+      final hasPermission = await controller?.requestLocationPermission();
+      if (hasPermission == true) {
+        await controller?.getCurrentLocation();
+      }
+    });
+   
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
       appBar: AppBar(
         backgroundColor: const Color(0xFF3C3CC0),
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
+        leading: isVisitor
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Get.offAllNamed(AppRoutes.ACCESS_SELECTION),
+              )
+            : Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.white),
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer();
+                  },
+                ),
+              ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () => Get.toNamed(AppRoutes.CLASS_NOTIFICATIONS),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Image.asset(
-              'assets/images/logo.png',
+              'assets/images/Logo.png',
               height: 32,
               color: Colors.white,
             ),
           ),
         ],
       ),
-      drawer: Sidebar(),      body: Stack(
+      drawer: isVisitor ? null : Sidebar(),
+      body: Stack(
         children: [
           SizedBox.expand(
             child: MapWidget(
@@ -83,12 +99,13 @@ class _HomePageState extends State<HomePage> {
               selectedLayer: _selectedLayer,
             ),
           ),
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: LocationSearch(),
-          ),    
+          if (widget.showSearch)
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: LocationSearch(),
+            ),
         ],
       ),
       floatingActionButton: Column(
@@ -150,7 +167,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: Colors.white,
               ),
             ),
           ],

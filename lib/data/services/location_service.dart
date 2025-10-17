@@ -62,21 +62,51 @@ class LocationService extends GetxService {
   Future<bool> requestLocationPermission() async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
+      print('[LocationService] Permissão inicial: $permission');
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+        print('[LocationService] Permissão após request: $permission');
       }
 
-      if (permission != LocationPermission.denied) {
-        currentPosition.value = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 10),
-        );
-        _startLocationTracking(); 
-        return true;
+      if (permission == LocationPermission.deniedForever) {
+        print('[LocationService] Permissão negada para sempre. Usuário precisa liberar nas configurações.');
+        error.value = 'Permissão de localização negada permanentemente. Ative nas configurações.';
+        return false;
       }
+
+      if (permission == LocationPermission.denied) {
+        print('[LocationService] Permissão negada.');
+        error.value = 'Permissão de localização negada.';
+        return false;
+      }
+
+      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+        try {
+          currentPosition.value = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            timeLimit: const Duration(seconds: 10),
+          );
+          print('[LocationService] Localização obtida: ${currentPosition.value}');
+          _startLocationTracking();
+          return true;
+        } catch (e) {
+          if (e is TimeoutException) {
+            print('[LocationService] Timeout ao obter localização.');
+            error.value = 'Tempo esgotado ao tentar obter localização. Tente novamente.';
+          } else {
+            print('[LocationService] Erro ao obter localização: $e');
+            error.value = 'Erro ao obter localização: $e';
+          }
+          // Permissão está ok, mas localização não veio
+          return false;
+        }
+      }
+      print('[LocationService] Estado de permissão inesperado: $permission');
+      error.value = 'Estado de permissão inesperado: $permission';
       return false;
     } catch (e) {
-      print('Erro ao solicitar permissão de localização: $e');
+      print('[LocationService] Erro ao solicitar permissão de localização: $e');
+      error.value = 'Erro ao solicitar permissão de localização: $e';
       return false;
     }
   }
@@ -87,17 +117,25 @@ class LocationService extends GetxService {
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: const Duration(seconds: 10),
       );
-      
+      print('[LocationService] Localização única obtida: $position');
       // Aplicar filtro de precisão mesmo para posição única
       if (position.accuracy <= ACCURACY_THRESHOLD) {
         currentPosition.value = position;
+        print('[LocationService] Localização aceita (precisão ${position.accuracy}m)');
         return position;
       } else {
-        print('Posição descartada por baixa precisão: ${position.accuracy}m');
+        print('[LocationService] Posição descartada por baixa precisão: ${position.accuracy}m');
+        error.value = 'Localização obtida com baixa precisão (${position.accuracy}m). Aguarde ou tente novamente.';
         return currentPosition.value;
       }
     } catch (e) {
-      print('Erro ao obter localização: $e');
+      if (e is TimeoutException) {
+        print('[LocationService] Timeout ao obter localização.');
+        error.value = 'Tempo esgotado ao tentar obter localização. Tente novamente.';
+      } else {
+        print('[LocationService] Erro ao obter localização: $e');
+        error.value = 'Erro ao obter localização: $e';
+      }
       return null;
     }
   }
