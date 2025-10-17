@@ -70,14 +70,6 @@ class Sidebar extends StatelessWidget {
               },
             ),
             _buildMenuItem(
-              icon: Icons.notifications,
-              title: 'Minhas Aulas',
-              onTap: () {
-                Get.back();
-                Get.toNamed(AppRoutes.CLASS_NOTIFICATIONS);
-              },
-            ),            
-            _buildMenuItem(
               icon: Icons.schedule,
               title: 'Horário de Aulas',
               onTap: () {
