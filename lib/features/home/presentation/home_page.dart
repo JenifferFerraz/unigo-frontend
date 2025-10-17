@@ -32,22 +32,20 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+  final isVisitor = (Get.arguments != null && Get.arguments['visitor'] == true);
+
     LocationService? controller;
     try {
       controller = Get.find<LocationService>();
-      print('[HomePage] LocationService encontrado. currentPosition: \\${controller.currentPosition.value}');
     } catch (e) {
-      print('[HomePage] Erro ao buscar LocationService: $e');
       controller = null;
     }
     if (controller == null) {
       Future.microtask(() async {
         final loc = await Get.putAsync(() => LocationService().init());
         final hasPermission = await loc.requestLocationPermission();
-        print('[HomePage] Permissão localização: $hasPermission');
         if (hasPermission == true) {
           await loc.getCurrentLocation();
-          print('[HomePage] Localização obtida: \\${loc.currentPosition.value}');
         }
         setState(() {});
       });
@@ -57,25 +55,29 @@ class _HomePageState extends State<HomePage> {
     }
     Future.microtask(() async {
       final hasPermission = await controller?.requestLocationPermission();
-      print('[HomePage] Permissão localização (controller): $hasPermission');
       if (hasPermission == true) {
         await controller?.getCurrentLocation();
-        print('[HomePage] Localização obtida (controller): \\${controller?.currentPosition.value}');
       }
     });
+   
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
       appBar: AppBar(
         backgroundColor: const Color(0xFF3C3CC0),
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
+        leading: isVisitor
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Get.offAllNamed(AppRoutes.ACCESS_SELECTION),
+              )
+            : Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.white),
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer();
+                  },
+                ),
+              ),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -87,7 +89,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      drawer: Sidebar(),
+      drawer: isVisitor ? null : Sidebar(),
       body: Stack(
         children: [
           SizedBox.expand(
@@ -165,7 +167,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: Colors.white,
               ),
             ),
           ],

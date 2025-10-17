@@ -10,41 +10,123 @@ class AccessSelectionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primary,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset('assets/images/Logo.png', height: 120),
-              const SizedBox(height: 48),
-              ElevatedButton(
-                onPressed: () => Get.offAllNamed(AppRoutes.LOGIN),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.primary,
-                  minimumSize: const Size(double.infinity, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                child: Container(
+                  width: 370,
+                  decoration: BoxDecoration(
+           
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 32),
+                      Image.asset('assets/images/Logo.png', height: 100),
+                      const SizedBox(height: 16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/images/Iniciar.png', 
+                          height: 180,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => Get.offAllNamed(AppRoutes.REGISTER),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.primary,
+                                  minimumSize: const Size(double.infinity, 48),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  side: const BorderSide(color: AppColors.primary, width: 2),
+                                ),
+                                child: const Text('PRIMEIRO ACESSO', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => Get.offAllNamed(AppRoutes.LOGIN),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(double.infinity, 48),
+                                ),
+                                child: const Text('ENTRAR', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => Get.offAllNamed(AppRoutes.HOME, arguments: {'visitor': true}),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(double.infinity, 48),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  side: const BorderSide(color: Colors.white, width: 2),
+                                ),
+                                child: const Text('VISITANTE', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-                child: const Text('Entrar', style: TextStyle(fontSize: 18)),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Get.offAllNamed(AppRoutes.HOME, arguments: {'visitor': true}),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.primary,
-                  minimumSize: const Size(double.infinity, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 32,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    children: [
+                      const TextSpan(text: 'Ao continuar você concorda com os '),
+                      WidgetSpan(
+                        child: GestureDetector(
+                          onTap: () => Get.toNamed(AppRoutes.TERMS),
+                          child: Text(
+                            'Termos e Condições e Política de Privacidade',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: const Text('Entrar como visitante', style: TextStyle(fontSize: 18)),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

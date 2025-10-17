@@ -14,6 +14,8 @@ class _CalendarPageState extends State<CalendarPage> {
   final ExamService _examService = ExamService();
   Map<int, List<Map<String, dynamic>>> _eventsByDay = {};
   int _selectedDay = DateTime.now().day;
+  int _currentMonth = DateTime.now().month;
+  int _currentYear = DateTime.now().year;
   bool _expanded = false;
 
   @override
@@ -24,28 +26,33 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Future<void> _loadExams() async {
     try {
-      final exams = await _examService.getExams();
+      final exams = await _examService.getExams(month: _currentMonth, year: _currentYear);
       final Map<int, List<Map<String, dynamic>>> map = {};
       for (final e in exams) {
         final dateStr = e['date'] as String? ?? '';
-        // Expecting dd/MM/yyyy or dd/MM
         final parts = dateStr.split('/');
-        if (parts.isEmpty) continue;
-        final day = int.tryParse(parts[0].padLeft(1, '0')) ?? null;
-        if (day == null) continue;
-        map.putIfAbsent(day, () => []).add(e);
+        if (parts.length < 3) continue;
+        final day = int.tryParse(parts[0].padLeft(2, '0'));
+        final month = int.tryParse(parts[1].padLeft(2, '0'));
+        final year = int.tryParse(parts[2]);
+        if (day == null || month == null || year == null) continue;
+        if (month == _currentMonth && year == _currentYear) {
+          map.putIfAbsent(day, () => []).add(e);
+        }
       }
       setState(() {
         _eventsByDay = map;
       });
-    } catch (err) {
-      // ignore errors for now
-    }
+    } catch (err) {}
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedEvents = _eventsByDay[_selectedDay] ?? [];
+    final monthNames = [
+      '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
 
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
@@ -105,9 +112,40 @@ class _CalendarPageState extends State<CalendarPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.chevron_left, color: Color(0xFF3C3CC0)),
-                          const Text('Outubro 2025', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          Icon(Icons.chevron_right, color: Color(0xFF3C3CC0)),
+                          IconButton(
+                            icon: Icon(Icons.chevron_left, color: Color(0xFF3C3CC0)),
+                            onPressed: () {
+                              setState(() {
+                                if (_currentMonth == 1) {
+                                  _currentMonth = 12;
+                                  _currentYear--;
+                                } else {
+                                  _currentMonth--;
+                                }
+                                _selectedDay = 1;
+                              });
+                              _loadExams();
+                            },
+                          ),
+                          Text(
+                            '${monthNames[_currentMonth]} $_currentYear',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.chevron_right, color: Color(0xFF3C3CC0)),
+                            onPressed: () {
+                              setState(() {
+                                if (_currentMonth == 12) {
+                                  _currentMonth = 1;
+                                  _currentYear++;
+                                } else {
+                                  _currentMonth++;
+                                }
+                                _selectedDay = 1;
+                              });
+                              _loadExams();
+                            },
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -127,7 +165,7 @@ class _CalendarPageState extends State<CalendarPage> {
                           crossAxisSpacing: 4,
                           childAspectRatio: 1.2,
                         ),
-                        itemCount: 31,
+                        itemCount: DateUtils.getDaysInMonth(_currentYear, _currentMonth),
                         itemBuilder: (context, i) {
                           final day = i + 1;
                           final hasEvent = _eventsByDay.containsKey(day);
@@ -177,7 +215,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
                 // Selected day events
                 Text(
-                  'Provas em $_selectedDay/10/2025',
+                  'Provas em $_selectedDay/${_currentMonth.toString().padLeft(2, '0')}/${_currentYear}',
                   style: TextStyle(color: Color(0xFF3C3CC0), fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 const SizedBox(height: 8),

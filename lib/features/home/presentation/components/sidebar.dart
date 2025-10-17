@@ -42,49 +42,58 @@ class Sidebar extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              if (!isVisitor) ...[
-                _buildMenuItem(
-                  icon: Icons.location_on,
-                  title: 'Localização',
-                  onTap: () {
-                    Get.back();
-                    Get.toNamed(AppRoutes.LOCATION_SEARCH);
-                  },
-                ),
+              _buildMenuItem(
+                icon: Icons.location_on,
+                title: 'Localização',
+                onTap: () {
+                  Get.back();
+                  Get.toNamed(AppRoutes.LOCATION_SEARCH);
+                },
+              ),
+              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+              _buildMenuItem(
+                icon: Icons.schedule,
+                title: 'Horário de Aulas',
+                onTap: () {
+                  Get.back();
+                  Get.toNamed(AppRoutes.SCHEDULE);
+                },
+              ),
+              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+              _buildMenuItem(
+                icon: Icons.event_note,
+                title: 'Eventos',
+                onTap: () {
+                  Get.back();
+                  // Navegação futura
+                },
+              ),
+              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+              _buildMenuItem(
+                icon: Icons.calendar_today,
+                title: 'Calendário',
+                onTap: () {
+                  Get.back();
+                  Get.toNamed(AppRoutes.CALENDAR);
+                },
+              ),
+              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+              _buildMenuItem(
+                icon: Icons.assignment,
+                title: 'Provas',
+                onTap: () {
+                  Get.back();
+                  Get.toNamed(AppRoutes.EXAMS);
+                },
+              ),
+              if (_authService.currentUser.value?.role == 'admin') ...[
                 const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
                 _buildMenuItem(
-                  icon: Icons.schedule,
-                  title: 'Horário de Aulas',
+                  icon: Icons.upload_file,
+                  title: 'Atualizar Provas/Eventos',
                   onTap: () {
                     Get.back();
-                    Get.toNamed(AppRoutes.SCHEDULE);
-                  },
-                ),
-                const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
-                _buildMenuItem(
-                  icon: Icons.event_note,
-                  title: 'Eventos',
-                  onTap: () {
-                    Get.back();
-                    // Navegação futura
-                  },
-                ),
-                const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
-                _buildMenuItem(
-                  icon: Icons.calendar_today,
-                  title: 'Calendário',
-                  onTap: () {
-                    Get.back();
-                    Get.toNamed(AppRoutes.CALENDAR);
-                  },
-                ),
-                const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
-                _buildMenuItem(
-                  icon: Icons.assignment,
-                  title: 'Provas',
-                  onTap: () {
-                    Get.back();
-                    Get.toNamed(AppRoutes.EXAMS);
+                    Get.toNamed(AppRoutes.ADMIN_UPLOAD);
                   },
                 ),
               ],

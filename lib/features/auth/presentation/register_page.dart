@@ -55,6 +55,14 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
 
     return Scaffold(
       backgroundColor: AppColors.primary,
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Get.offAllNamed(AppRoutes.ACCESS_SELECTION),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(

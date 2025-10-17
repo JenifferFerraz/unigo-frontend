@@ -14,6 +14,7 @@ import '../features/locations/presentation/class_notifications_page.dart';
 import '../features/locations/location_binding.dart';
 import '../features/exams/presentation/exams_page.dart';
 import '../features/auth/presentation/access_selection_page.dart';
+import '../features/admin/presentation/admin_upload_page.dart';
 
 abstract class AppRoutes {
   static const INITIAL = '/';
@@ -30,6 +31,7 @@ abstract class AppRoutes {
   static const EXAMS = '/exams';
   static const RESET_PASSWORD = '/reset-password';
   static const LOCATION_SEARCH = '/location-search';
+  static const ADMIN_UPLOAD = '/admin-upload';
 
   static final pages = [
     GetPage(
@@ -58,13 +60,11 @@ abstract class AppRoutes {
     GetPage(
       name: TERMS,
       page: () => const TermsPage(),
-      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: HOME,
       page: () => const HomePage(),
       binding: HomeBinding(),
-      // Remove AuthMiddleware so visitor can access
     ),
     GetPage(
       name: SCHEDULE,
@@ -86,6 +86,10 @@ abstract class AppRoutes {
       name: EXAMS,
       page: () => ExamsPage(),
       middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: ADMIN_UPLOAD,
+      page: () => const AdminUploadPage(),
     ),
   ];
 }
