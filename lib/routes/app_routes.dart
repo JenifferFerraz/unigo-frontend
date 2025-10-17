@@ -11,6 +11,7 @@ import '../features/schedule/presentation/schedule_page.dart';
 import '../features/calendar/presentation/calendar_page.dart';
 import '../features/locations/presentation/location_search_page.dart';
 import '../features/locations/presentation/class_notifications_page.dart';
+import '../features/feedback/presentation/feedback_page.dart';
 import '../features/locations/location_binding.dart';
 import '../features/exams/presentation/exams_page.dart';
 import '../features/auth/presentation/access_selection_page.dart';
@@ -29,6 +30,7 @@ abstract class AppRoutes {
   static const EVENTS = '/events';
   static const CALENDAR = '/calendar';
   static const EXAMS = '/exams';
+  static const FEEDBACK = '/feedback';
   static const RESET_PASSWORD = '/reset-password';
   static const LOCATION_SEARCH = '/location-search';
   static const ADMIN_UPLOAD = '/admin-upload';
@@ -90,6 +92,11 @@ abstract class AppRoutes {
     GetPage(
       name: ADMIN_UPLOAD,
       page: () => const AdminUploadPage(),
+    ),
+    GetPage(
+      name: FEEDBACK,
+      page: () => const FeedbackPage(),
+      middlewares: [AuthMiddleware()],
     ),
   ];
 }
