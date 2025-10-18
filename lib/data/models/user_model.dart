@@ -45,52 +45,35 @@ class User {
   final int id;
   final String name;
   final String email;
-  final String cpf;
-  final String? avatar;
-  final Course? course;
-  final bool isEmailVerified;
-  final bool isDeleted;
-  final String role;
-  final String token;
-  final String refreshToken;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final String? role;
   final StudentProfile? studentProfile;
 
   User({
     required this.id,
     required this.name,
     required this.email,
-    required this.cpf,
-    this.avatar,
-    this.course,
-    required this.isEmailVerified,
-    required this.isDeleted,
-    required this.role,
-    required this.token,
-    required this.refreshToken,
-    required this.createdAt,
-    required this.updatedAt,
+    this.role,
     this.studentProfile,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    StudentProfile? profile;
+    if (json['documentId'] != null || json['phone'] != null) {
+      profile = StudentProfile(
+        id: 0,
+        studentId: json['documentId'] ?? '',
+        phone: json['phone'] ?? '',
+        courseId: null,
+        shift: null,
+        gender: null,
+      );
+    }
     return User(
       id: json['id'],
       name: json['name'],
       email: json['email'],
-      cpf: json['cpf'],      avatar: json['avatar'],
-      course: json['course'] != null ? Course.fromJson(json['course']) : null,
-      isEmailVerified: json['isEmailVerified'],
-      isDeleted: json['isDeleted'],
       role: json['role'],
-      token: json['token'],
-      refreshToken: json['refreshToken'],
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
-      studentProfile: json['studentProfile'] != null 
-          ? StudentProfile.fromJson(json['studentProfile'])
-          : null,
+      studentProfile: profile,
     );
   }
 
@@ -99,15 +82,7 @@ class User {
       'id': id,
       'name': name,
       'email': email,
-      'cpf': cpf,      'avatar': avatar,
-      'course': course?.toJson(),
-      'isEmailVerified': isEmailVerified,
-      'isDeleted': isDeleted,
       'role': role,
-      'token': token,
-      'refreshToken': refreshToken,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
       'studentProfile': studentProfile?.toJson(),
     };
   }

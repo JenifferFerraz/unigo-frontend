@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/atoms/map/map_widget.dart';
+import '../../../core/atoms/loading_screen.dart';
 import '../../../data/services/location_service.dart';
 import '../../../routes/app_routes.dart';
 import './components/sidebar.dart';
@@ -23,6 +24,8 @@ class _HomePageState extends State<HomePage> {
     '2º Andar',
     '3º Andar',
   ];
+
+  bool _showLocationSearch = false;
 
   void _toggleLayer() {
     setState(() {
@@ -49,9 +52,7 @@ class _HomePageState extends State<HomePage> {
         }
         setState(() {});
       });
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const LoadingScreen(message: 'Carregando localização...');
     }
     Future.microtask(() async {
       final hasPermission = await controller?.requestLocationPermission();
@@ -99,19 +100,74 @@ class _HomePageState extends State<HomePage> {
               selectedLayer: _selectedLayer,
             ),
           ),
-          if (widget.showSearch)
+          if (_showLocationSearch)
             Positioned(
               top: 16,
               left: 16,
               right: 16,
               child: LocationSearch(),
             ),
+          // AVISO DE LOCALIZAÇÃO
+          Obx(() {
+            final position = controller?.currentPosition.value;
+            if (position == null) {
+              return Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  color: Colors.orange[100],
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_off, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Localização não ativada. Para uma experiência completa, permita o acesso à localização.',
+                          style: TextStyle(color: Colors.orange[900], fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final permission = await controller?.requestLocationPermission();
+                          if (permission == true) {
+                            await controller?.getCurrentLocation();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(controller?.error.value ?? 'Permissão de localização negada.'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Ativar', style: TextStyle(color: Colors.orange)),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
         ],
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          FloatingActionButton(
+            heroTag: "btnSearch",
+            onPressed: () {
+              setState(() {
+                _showLocationSearch = !_showLocationSearch;
+              });
+            },
+            backgroundColor: Colors.white,
+            child: const Icon(Icons.search, color: Color(0xFF3C3CC0)),
+          ),
+          const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: "btnLayer",
             onPressed: _toggleLayer,
@@ -123,12 +179,6 @@ class _HomePageState extends State<HomePage> {
                 Text(_layerNames[_selectedLayer], style: TextStyle(fontSize: 10, color: Colors.blue)),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: "btnLocation",
-            onPressed: () => controller?.getCurrentLocation(),
-            child: const Icon(Icons.my_location),
           ),
         ],
       ),

@@ -42,49 +42,59 @@ class AuthService extends GetxService {
   /// Registra um novo usuário no sistema
 
   Future<bool> register({
-  required String name,
-  required String email,
-  required String password,
-  String? avatar,
-  required String role,
-  required Map<String, dynamic> studentProfile,
+    required String name,
+    required String email,
+    required String password,
+    String? avatar,
+    required String role,
+    required Map<String, dynamic> studentProfile,
+    required bool termsAccepted,
   }) async {
     try {
       isLoading.value = true;
-      
-      final String? gender = studentProfile.remove('gender') as String?;
       
       final requestData = {
         'name': name,
         'email': email,
         'password': password,
-        'avatar': avatar,
         'role': role,
-        'termsAccepted': false,
-        if (gender != null) 'gender': gender,
+        'termsAccepted': termsAccepted,
         'studentProfile': studentProfile,
       };
       
       
       final response = await dio.post('/users', data: requestData);
+      print('[REGISTER DEBUG] Backend response:');
+      print(response.data);
+      print('Status code: ${response.statusCode}');
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 && response.data != null && response.data['id'] != null) {
         final userData = response.data;
-        currentUser.value = User.fromJson(userData);
+        try {
+          currentUser.value = User.fromJson(userData);
+        } catch (e) {
+          print('[REGISTER DEBUG] Erro ao converter User.fromJson: $e');
+        }
         await storage.saveUserData(userData);
         return true;
+      } else {
+        print('[REGISTER DEBUG] Falha na validação do response:');
+        print('response.data: ${response.data}');
+        print('response.statusCode: ${response.statusCode}');
       }
-      
       return false;
     } on DioException catch (e) {
+      print('[REGISTER DEBUG] DioException: $e');
+      if (e.response != null) {
+        print('[REGISTER DEBUG] DioException response data: ${e.response?.data}');
+        print('[REGISTER DEBUG] DioException status code: ${e.response?.statusCode}');
+      }
       String errorMessage = 'Não foi possível criar a conta';
-      
       if (e.response?.statusCode == 400 && e.response?.data != null) {
         if (e.response?.data['error'] != null) {
           errorMessage = e.response?.data['error'];
         }
       }
-      
       Get.snackbar(
         'Erro',
         errorMessage,
@@ -94,6 +104,7 @@ class AuthService extends GetxService {
       );
       return false;
     } catch (e) {
+      print('[REGISTER DEBUG] Exception: $e');
       Get.snackbar(
         'Erro',
         'Não foi possível criar a conta',
@@ -118,7 +129,6 @@ class AuthService extends GetxService {
 
       if (response.statusCode == 200 || response.statusCode == 202) {
         final userData = response.data;
-        
         currentUser.value = User.fromJson(userData);
         await storage.saveUserData(userData);
 
@@ -126,9 +136,7 @@ class AuthService extends GetxService {
           Get.offAllNamed(AppRoutes.TERMS);
           return true;
         }
-
-        await handleLocationPermission();
-        // Inicializa LocationService após login
+        // Inicializa LocationService após login, sem solicitar permissão
         if (Get.isRegistered<LocationService>()) {
           await Get.delete<LocationService>();
         }

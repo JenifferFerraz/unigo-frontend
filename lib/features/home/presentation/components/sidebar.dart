@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../core/atoms/loading_screen.dart';
 
 class Sidebar extends StatelessWidget {
   Widget _buildMenuItem({required IconData icon, required String title, required VoidCallback onTap}) {
@@ -63,8 +64,15 @@ class Sidebar extends StatelessWidget {
               _buildMenuItem(
                 icon: Icons.event_note,
                 title: 'Eventos',
-                onTap: () {
+                onTap: () async {
                   Get.back();
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const LoadingScreen(message: 'Carregando eventos...'),
+                  );
+                  await Future.delayed(const Duration(milliseconds: 1500));
+                  if (Navigator.of(context).canPop()) Navigator.of(context).pop();
                   // Navegação futura
                 },
               ),
@@ -101,8 +109,14 @@ class Sidebar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    _authService.logout();
+                  onPressed: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const LoadingScreen(message: 'Saindo...'),
+                    );
+                    await _authService.logout();
+                    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
                     Get.offAllNamed(AppRoutes.LOGIN);
                   },
                   icon: const Icon(Icons.logout),
