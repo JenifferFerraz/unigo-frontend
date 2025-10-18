@@ -12,32 +12,22 @@ import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
-class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTextInputFormatter(
-    mask: '###.###.###-##',
-    filter: {"#": RegExp(r'[0-9]')},
-  );
+class RegisterPage extends GetView<AuthService> {  
   
-  static final phoneMask = MaskTextInputFormatter(
-    mask: '(##) #####-####',
-    filter: {"#": RegExp(r'[0-9]')},
-  );
   const RegisterPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     controller.fetchCourses();
     
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    final cpfController = TextEditingController();
-    final studentIdController = TextEditingController();
-    final phoneController = TextEditingController();
-    final selectedCourse = Rxn<int>();
-    final selectedShift = Rxn<String>();
-    final selectedGender = Rxn<String>();
-    final avatarUrl = ''.obs;   
-    final courses = controller.courses;
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final studentIdController = TextEditingController();
+  final selectedCourse = Rxn<int>();
+  final selectedShift = Rxn<String>();
+  final selectedGender = Rxn<String>();
+  final courses = controller.courses;
 
     final shifts = [
       'matutino',
@@ -46,12 +36,7 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
       'integral',
     ];
 
-    final genders = [
-      'male',
-      'female',
-      'other',
-      'prefer_not_to_say',
-    ];
+   
 
     return Scaffold(
       backgroundColor: AppColors.primary,
@@ -94,68 +79,7 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
-                    Center(
-                      child: GestureDetector(
-                        onTap: () async {
-                          try {
-                            final ImagePicker picker = ImagePicker();
-                            final XFile? image = await picker.pickImage(
-                              source: ImageSource.gallery,
-                              imageQuality: 70,
-                            );
-                            
-                            if (image != null) {
-                              final url = await UploadImagensService.to.uploadImage(image);
-                              
-                              if (url != null) {
-                                avatarUrl.value = url.toString();
-                                Get.snackbar(
-                                  'Sucesso', 
-                                  'Imagem de perfil atualizada',
-                                  snackPosition: SnackPosition.TOP,
-                                  duration: const Duration(seconds: 2),
-                                );
-                              } else {
-                                throw 'Falha ao carregar imagem';
-                              }
-                            }
-                          } catch (e) {
-                            Get.snackbar(
-                              'Erro', 
-                              'Não foi possível carregar a imagem',
-                              snackPosition: SnackPosition.TOP,
-                              backgroundColor: Colors.red[100],
-                              colorText: Colors.red[900],
-                            );
-                          }
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.primary,
-                              width: 2,
-                            ),
-                          ),
-                          child: Obx(() => CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Colors.white,
-                            backgroundImage: avatarUrl.value.isNotEmpty
-                                ? NetworkImage(avatarUrl.value)
-                                : null,
-                            child: avatarUrl.value.isEmpty
-                                ? const Icon(
-                                    Icons.add_a_photo,
-                                    size: 40,
-                                    color: AppColors.primary,
-                                  )
-                                : null,
-                          )),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                   
                     TextInputWidget(
                       controller: nameController,
                       label: 'Nome Completo',
@@ -172,27 +96,6 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
                       label: 'Senha',
                       obscureText: true,
                     ),
-                    const SizedBox(height: 16),                    TextInputWidget(
-                      controller: cpfController,
-                      label: 'CPF',
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [cpfMask],
-                      hint: '000.000.000-00',
-                    ),
-                    const SizedBox(height: 16),
-                    Obx(() => DropdownInputWidget<String>(
-                      label: 'Gênero',
-                      hint: 'Selecione o gênero',
-                      value: selectedGender.value,
-                      items: genders.map((gender) => DropdownMenuItem(
-                        value: gender,
-                        child: Text(gender == 'male' ? 'Masculino' 
-                            : gender == 'female' ? 'Feminino'
-                            : gender == 'other' ? 'Outro'
-                            : 'Prefiro não dizer'),
-                      )).toList(),
-                      onChanged: (value) => selectedGender.value = value,
-                    )),
                     const SizedBox(height: 16),
                     Obx(() => DropdownInputWidget<int>(
                       label: 'Curso',
@@ -220,23 +123,15 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
                       controller: studentIdController,
                       label: 'Matrícula',
                     ),
-                    const SizedBox(height: 16),                    TextInputWidget(
-                      controller: phoneController,
-                      label: 'Telefone',
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [phoneMask],
-                      hint: '(00) 00000-0000',
-                    ),
                     const SizedBox(height: 24),
                     PrimaryButton(
+                      text: 'Cadastrar',
                       onPressed: () async {
                         try {
                           if (nameController.text.isEmpty ||
                               emailController.text.isEmpty ||
                               passwordController.text.isEmpty ||
-                              cpfController.text.isEmpty ||
                               studentIdController.text.isEmpty ||
-                              phoneController.text.isEmpty ||
                               selectedCourse.value == null ||
                               selectedShift.value == null ||
                               selectedGender.value == null) {
@@ -249,13 +144,14 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
                               duration: const Duration(seconds: 4),
                             );
                             return;
-                          }                          final studentProfile = {
+                          }
+                          final studentProfile = {
                             'studentId': studentIdController.text,
-                            'phone': phoneMask.getUnmaskedText(), 
                             'courseId': selectedCourse.value,
                             'shift': selectedShift.value,
                             'gender': selectedGender.value,
-                          };Get.dialog(
+                          };
+                          Get.dialog(
                             Center(
                               child: Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -313,15 +209,15 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
                             ),
                             barrierDismissible: false,
                             barrierColor: Colors.black.withOpacity(0.3),
-                          );                          final success = await controller.register(
+                          );
+                          final success = await controller.register(
                             name: nameController.text,
                             email: emailController.text,
                             password: passwordController.text,
-                            cpf: cpfMask.getUnmaskedText(), 
-                            avatar: avatarUrl.value,
                             role: 'student',
                             studentProfile: studentProfile,
-                          );                          Get.back();
+                          );
+                          Get.back();
                           if (success) {
                             Get.snackbar(
                               'Conta Criada!',
@@ -334,49 +230,32 @@ class RegisterPage extends GetView<AuthService> {  static final cpfMask = MaskTe
                             nameController.clear();
                             emailController.clear();
                             passwordController.clear();
-                            cpfController.clear();
                             studentIdController.clear();
-                            phoneController.clear();                            selectedCourse.value = null;
+                            selectedCourse.value = null;
                             selectedShift.value = null;
                             selectedGender.value = null;
-                            avatarUrl.value = '';
                             await Future.delayed(const Duration(seconds: 2));
                             Get.until((route) => route.settings.name == AppRoutes.LOGIN);
                           } else {
                             throw 'Não foi possível criar sua conta';
                           }
-                        } catch (e) {                          Get.back();
-                          if (e.toString().contains('duplicate key')) {
-                            Get.snackbar(
-                              'Conta Existente',
-                              'Este email ou CPF já está cadastrado. Por favor, faça login ou use outro email/CPF.',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.orange[100],
-                              colorText: Colors.orange[900],
-                              duration: const Duration(seconds: 5),
-                              mainButton: TextButton(
-                                onPressed: () => Get.until((route) => route.settings.name == AppRoutes.LOGIN),
-                                child: const Text('Ir para Login', style: TextStyle(color: Colors.blue)),
-                              ),
-                            );
-                          } else {
-                            Get.snackbar(
-                              'Erro no Cadastro',
-                              'Ocorreu um erro ao criar sua conta. Tente novamente.',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.red[100],
-                              colorText: Colors.red[900],
-                              duration: const Duration(seconds: 5),
-                            );
-                          }
+                        } catch (e) {
+                          Get.back();
+                          Get.snackbar(
+                            'Erro no Cadastro',
+                            'Ocorreu um erro ao criar sua conta. Tente novamente.',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Colors.red[100],
+                            colorText: Colors.red[900],
+                            duration: const Duration(seconds: 5),
+                          );
                         }
                       },
-                      text: 'Cadastrar',
                     ),
                     const SizedBox(height: 16),
                     TextButton(
                       onPressed: () => Get.back(),
-                      child: Text(
+                      child: const Text(
                         'Já tem uma conta? Faça login',
                         style: TextStyle(
                           color: AppColors.primary,

@@ -42,13 +42,12 @@ class AuthService extends GetxService {
   /// Registra um novo usuário no sistema
 
   Future<bool> register({
-    required String name,
-    required String email,
-    required String password,
-    required String cpf,
-    String? avatar,
-    required String role,
-    required Map<String, dynamic> studentProfile,
+  required String name,
+  required String email,
+  required String password,
+  String? avatar,
+  required String role,
+  required Map<String, dynamic> studentProfile,
   }) async {
     try {
       isLoading.value = true;
@@ -59,7 +58,6 @@ class AuthService extends GetxService {
         'name': name,
         'email': email,
         'password': password,
-        'cpf': cpf,
         'avatar': avatar,
         'role': role,
         'termsAccepted': false,
