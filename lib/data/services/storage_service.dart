@@ -42,6 +42,8 @@ class StorageService extends GetxService {
           accessibility: KeychainAccessibility.first_unlock,
         ),
       );
+      // Atualiza o token em memória imediatamente após salvar
+      token.value = userData['token'] as String?;
     } catch (e) {
       rethrow;
     }
@@ -84,7 +86,6 @@ class StorageService extends GetxService {
     return data?['refreshToken'];
   }
 
-  /// Remove todos os dados do usuário do armazenamento
   Future<void> clearUserData() async {
     try {
       await _storage.delete(

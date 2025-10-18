@@ -7,8 +7,10 @@ import 'package:latlong2/latlong.dart';
 import '../providers/location_provider.dart';
 import '../models/location_model.dart';
 import '../models/navigation_model.dart';
+import 'package:unigo_mobile/core/config/env_service.dart';
 
 class LocationService extends GetxService {
+
   final RxBool isLocationEnabled = false.obs;
   final Rxn<Position> currentPosition = Rxn<Position>();
   final RxList<Location> locations = RxList<Location>();
@@ -25,16 +27,16 @@ class LocationService extends GetxService {
   StreamSubscription<Position>? _positionStreamSubscription;
   
   // Parâmetros otimizados para bloco de ~2719m² (40x68m aprox.)
-  static const double ACCURACY_THRESHOLD = 12.0; // metros - mais rigoroso para ambiente interno
-  static const double MIN_DISTANCE_FILTER = 1.5; // metros - movimento mínimo (mais sensível)
-  static const double STATIONARY_THRESHOLD = 1.0; // metros - muito sensível para detectar paradas
-  static const int POSITION_BUFFER_SIZE = 7; // mais posições para suavização interna
-  static const double MAX_SPEED_THRESHOLD = 8.0; // m/s - 28.8 km/h (mais realista para caminhada interna)
+  static const double ACCURACY_THRESHOLD = 12.0;
+  static const double MIN_DISTANCE_FILTER = 1.5;
+  static const double STATIONARY_THRESHOLD = 1.0;
+  static const int POSITION_BUFFER_SIZE = 7;
+  static const double MAX_SPEED_THRESHOLD = 8.0;
   
   // Parâmetros específicos para navegação interna
-  static const double INDOOR_STEP_COMPLETION_DISTANCE = 3.0; // metros - quando considerar step completo
-  static const double CORRIDOR_WIDTH_THRESHOLD = 2.5; // metros - largura típica de corredor
-  static const int INDOOR_UPDATE_INTERVAL_STATIONARY = 15; // segundos entre updates quando parado
+  static const double INDOOR_STEP_COMPLETION_DISTANCE = 3.0;
+  static const double CORRIDOR_WIDTH_THRESHOLD = 2.5;
+  static const int INDOOR_UPDATE_INTERVAL_STATIONARY = 15;
   
   // Buffer para suavização de posições
   final List<Position> _positionBuffer = [];
@@ -48,14 +50,14 @@ class LocationService extends GetxService {
     print('[LocationService] Iniciando LocationService...');
     try {
       isLocationEnabled.value = await Geolocator.isLocationServiceEnabled();
-      print('[LocationService] isLocationEnabled: \\${isLocationEnabled.value}');
+      print('[LocationService] isLocationEnabled: ${isLocationEnabled.value}');
       final blocksStart = DateTime.now();
       await getBlocks();
-      print('[LocationService] getBlocks levou: \\${DateTime.now().difference(blocksStart).inMilliseconds}ms');
+      print('[LocationService] getBlocks levou: ${DateTime.now().difference(blocksStart).inMilliseconds}ms');
     } catch (e) {
       print('Erro ao inicializar serviço de localização: $e');
     }
-    print('[LocationService] init levou: \\${DateTime.now().difference(start).inMilliseconds}ms');
+    print('[LocationService] init levou: ${DateTime.now().difference(start).inMilliseconds}ms');
     return this;
   }
 
@@ -97,7 +99,6 @@ class LocationService extends GetxService {
             print('[LocationService] Erro ao obter localização: $e');
             error.value = 'Erro ao obter localização: $e';
           }
-          // Permissão está ok, mas localização não veio
           return false;
         }
       }
@@ -111,6 +112,53 @@ class LocationService extends GetxService {
     }
   }
 
+  Future<void> fetchAndSetInternalRoute({
+    required int structureId,
+    required int floor,
+    required List<double> end,
+    int? roomId,
+  }) async {
+    isLoading.value = true;
+    error.value = '';
+    try {
+      final pos = currentPosition.value;
+      if (pos == null) {
+        error.value = 'Posição atual não disponível';
+        return;
+      }
+      final start = [pos.latitude, pos.longitude];
+      final url = '${EnvService.apiBaseUrl}/internal-route/shortest-to-room';
+      final body = {
+        'structureId': structureId,
+        'floor': 0,
+        'start': [-48.9435809, -16.2930314],
+      };
+      if (roomId != null) body['roomId'] = roomId;
+
+      final response = await GetConnect().post(url, body);
+      if (response.statusCode == 200 && response.body != null) {
+        // Se vier lista de pontos, desenhar Polyline diretamente
+        if (response.body is List) {
+          final List<dynamic> points = response.body;
+          final List<LatLng> latlngs = points.map((p) => LatLng(p[1], p[0])).toList();
+          activeRoute.value = NavigationRoute(
+            steps: [],
+            totalDistance: 0,
+            estimatedDuration: 0,
+            path: latlngs,
+          );
+        } else {
+          activeRoute.value = NavigationRoute.fromJson(response.body);
+        }
+      } else {
+        error.value = 'Erro ao buscar rota: ${response.statusText}';
+      }
+    } catch (e) {
+      error.value = 'Erro ao buscar rota: $e';
+    } finally {
+      isLoading.value = false;
+    }
+  }
   Future<Position?> getCurrentLocation() async {
     try {
       final position = await Geolocator.getCurrentPosition(
@@ -140,17 +188,14 @@ class LocationService extends GetxService {
     }
   }
 
-  // Filtrar posição baseado em critérios de precisão
-  bool _isPositionValid(Position position) {
+  bool _isValidPosition(Position position) {
     // 1. Verificar precisão
     if (position.accuracy > ACCURACY_THRESHOLD) {
-      print('Posição rejeitada: precisão muito baixa (${position.accuracy}m)');
       return false;
     }
 
-    // 2. Verificar velocidade suspeita (possível erro de GPS)
+    // 2. Verificar velocidade reportada
     if (position.speed > MAX_SPEED_THRESHOLD) {
-      print('Posição rejeitada: velocidade muito alta (${position.speed}m/s)');
       return false;
     }
 
@@ -202,7 +247,7 @@ class LocationService extends GetxService {
     double totalWeight = 0;
 
     for (int i = 0; i < _positionBuffer.length; i++) {
-      final weight = i + 1; // peso crescente para posições mais recentes
+      final weight = i + 1;
       totalLat += _positionBuffer[i].latitude * weight;
       totalLng += _positionBuffer[i].longitude * weight;
       totalWeight += weight;
@@ -211,7 +256,6 @@ class LocationService extends GetxService {
     final smoothLat = totalLat / totalWeight;
     final smoothLng = totalLng / totalWeight;
 
-    // Retornar nova posição suavizada mantendo outros dados da posição atual
     return Position(
       latitude: smoothLat,
       longitude: smoothLng,
@@ -244,30 +288,27 @@ class LocationService extends GetxService {
     _positionStreamSubscription?.cancel();
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: LocationSettings(
-        accuracy: LocationAccuracy.high, 
-        distanceFilter: isNavigating.value ? 1 : 2, // Mais sensível para ambiente interno
+        accuracy: LocationAccuracy.high,
+        distanceFilter: isNavigating.value ? 1 : 2,
       ),
     ).listen((Position position) {
       _currentAccuracy.value = position.accuracy;
-      
-      // Aplicar filtros de validação
-      if (!_isPositionValid(position)) {
-        return; // Descartar posição inválida
+
+      if (!_isValidPosition(position)) {
+        return;
       }
 
-      // Detectar se está parado
       _updateStationaryStatus(position);
-      
-      // Se está parado e não navegando, não atualizar posição frequentemente
+      final now = DateTime.now();
+
+      // Se usuário está parado e não navegando, reduzir atualizações
       if (_isUserStationary && !isNavigating.value) {
-        final now = DateTime.now();
-        if (_lastUpdateTime != null && 
+        if (_lastUpdateTime != null &&
             now.difference(_lastUpdateTime!).inSeconds < INDOOR_UPDATE_INTERVAL_STATIONARY) {
-          return; // Não atualizar se atualizou recentemente e está parado
+          return;
         }
       }
 
-      // Aplicar suavização
       final smoothedPosition = _smoothPosition(position);
       
       // Atualizar posição atual
@@ -281,7 +322,7 @@ class LocationService extends GetxService {
       }
     }, onError: (error) {
       print('Erro no stream de localização: $error');
-      error.value = 'Erro ao rastrear localização: $error';
+      this.error.value = 'Erro ao rastrear localização: $error';
     });
   }
 
@@ -290,14 +331,8 @@ class LocationService extends GetxService {
       isLoading.value = true;
       error.value = '';
       
-      final result = await _locationProvider.getAllLocations(
-        type: type,
-        block: block,
-        floor: floor,
-        search: search
-      );
-      
-      locations.value = result;
+      final result = await _locationProvider.getAllStructures();
+      locations.clear();
     } catch (e) {
       error.value = 'Erro ao carregar localizações: $e';
     } finally {
@@ -310,8 +345,7 @@ class LocationService extends GetxService {
       isLoading.value = true;
       error.value = '';
       
-      final result = await _locationProvider.getBlocks();
-      blocks.value = result;
+      blocks.value = [];
     } catch (e) {
       error.value = 'Erro ao carregar blocos: $e';
     } finally {
@@ -394,7 +428,6 @@ class LocationService extends GetxService {
         estimatedTimeRemaining: route.estimatedDuration
       );
       
-      // Limpar buffer e reiniciar rastreamento com configurações de navegação
       _positionBuffer.clear();
       _startLocationTracking();
       
@@ -414,7 +447,6 @@ class LocationService extends GetxService {
     navigationProgress.value = null;
     _positionBuffer.clear();
     
-    // Reiniciar rastreamento com configurações normais
     _startLocationTracking();
   }
   

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/location_controller.dart';
 import '../../../data/models/location_model.dart';
+import '../../../data/models/structure_model.dart';
 import 'location_detail_page.dart';
 
 class LocationSearchPage extends StatelessWidget {
@@ -178,7 +179,16 @@ class LocationSearchPage extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(subtitle),
-        onTap: () => Get.to(() => LocationDetailPage(location: location)),
+        onTap: () => Get.to(() => LocationDetailPage(
+          structure: Structure(
+            id: location.id,
+            name: location.name,
+            description: location.description,
+            geometry: null,
+            centroid: null,
+            floors: location.floor != null ? [location.floor!] : null,
+          ),
+        )),
       ),
     );
   }

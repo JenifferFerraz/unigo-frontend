@@ -8,7 +8,6 @@ import '../../../data/services/location_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class MapWidget extends StatefulWidget {
-  // Estado para destino selecionado
   static LatLng? _selectedDestination;
   final double zoom;
   final bool showUserLocation;
@@ -37,7 +36,6 @@ class _MapWidgetState extends State<MapWidget> {
 
   @override
   void dispose() {
-    // nothing to dispose on controller, but keep for future
     super.dispose();
   }
 
@@ -149,15 +147,14 @@ class _MapWidgetState extends State<MapWidget> {
 
               return Obx(() {
                 final position = locationService.currentPosition.value;
+                final activeRoute = locationService.activeRoute.value;
                 print('[MapWidget] currentPosition: $position');
                 final center = position != null
                     ? LatLng(position.latitude, position.longitude)
                     : LatLng(-16.294387, -48.944379);
                 print('[MapWidget] center usado no mapa: $center');
 
-                // If we have the user's position and haven't centered yet, move the map controller
                 if (position != null && !_hasCenteredOnce) {
-                  // Schedule movement after current frame to ensure map controller is ready
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     try {
                       _mapController.move(center, widget.zoom);
@@ -168,15 +165,46 @@ class _MapWidgetState extends State<MapWidget> {
                   _hasCenteredOnce = true;
                 }
 
+                final List<Polyline> allPolylines = List<Polyline>.from(polylines);
+                if (activeRoute != null) {
+                  List<LatLng> routePoints = [];
+                  if (activeRoute.steps.isNotEmpty) {
+                    routePoints = [
+                      ...activeRoute.steps.expand((step) => [step.startPoint, step.endPoint])
+                    ];
+                  } else if (activeRoute.path != null && activeRoute.path!.isNotEmpty) {
+                    routePoints = activeRoute.path!;
+                  }
+                  print('[MapWidget] routePoints recebidos para desenhar: $routePoints');
+                  final List<LatLng> uniqueRoutePoints = [];
+                  for (final pt in routePoints) {
+                    if (pt != null && (uniqueRoutePoints.isEmpty || uniqueRoutePoints.last != pt)) {
+                      uniqueRoutePoints.add(pt);
+                    }
+                  }
+                  if (uniqueRoutePoints.isNotEmpty) {
+                      allPolylines.add(
+                        Polyline(
+                          points: uniqueRoutePoints,
+                          color: Colors.blue,
+                          strokeWidth: 8.0,
+                          borderStrokeWidth: 3.0,
+                          borderColor: Colors.white,
+                          isDotted: false,
+                          strokeCap: StrokeCap.round,
+                        ),
+                      );
+                  }
+                }
+
                 return FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
                     center: center,
                     zoom: widget.zoom,
                     maxZoom: 22,
-                      onTap: (tapPos, latlng) {
+                    onTap: (tapPos, latlng) {
                       MapWidget._selectedDestination = latlng;
-                      // Força rebuild
                       (context as Element).markNeedsBuild();
                     },
                   ),
@@ -187,7 +215,7 @@ class _MapWidgetState extends State<MapWidget> {
                       userAgentPackageName: 'com.example.app',
                     ),
                     PolygonLayer(polygons: polygons),
-                    PolylineLayer(polylines: polylines),
+                    PolylineLayer(polylines: allPolylines),
                     MarkerLayer(markers: [
                       ...markers,
                       if (widget.showUserLocation && position != null)
@@ -233,7 +261,7 @@ class _MapWidgetState extends State<MapWidget> {
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: Text(
             'Map tiles by Stamen, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 12, color: Colors.white),
             textAlign: TextAlign.center,
           ),
         ),

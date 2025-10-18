@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../data/models/location_model.dart';
+import '../../../data/models/structure_model.dart';
 import '../../../data/services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 class LocationDetailPage extends StatelessWidget {
-  final Location location;
-  final LocationService _locationService = Get.find<LocationService>();
+  final Structure structure;
 
-  LocationDetailPage({Key? key, required this.location}) : super(key: key);
+  const LocationDetailPage({Key? key, required this.structure}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(location.name),
+        title: Text(structure.name),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -28,66 +27,52 @@ class LocationDetailPage extends StatelessWidget {
               elevation: 3,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Código: ${location.code}',
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatLocationType(location.type),
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                            ],
+                    _buildLocationIcon(),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            structure.name,
+                            style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        _buildLocationIcon(),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            'ID: ${structure.id}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          if (structure.floors != null && structure.floors!.isNotEmpty)
+                            const SizedBox(height: 8),
+                          if (structure.floors != null && structure.floors!.isNotEmpty)
+                            _buildInfoChips(),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildInfoChips(),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            if (location.description != null && location.description!.isNotEmpty)
+            if (structure.description != null && structure.description!.isNotEmpty)
               _buildInfoSection(
                 context: context,
                 title: 'Descrição',
-                content: location.description!,
+                content: structure.description!,
                 icon: Icons.description,
               ),
 
-            if (location.nearbyLandmarks != null && location.nearbyLandmarks!.isNotEmpty)
-              _buildInfoSection(
-                context: context,
-                title: 'Pontos de Referência',
-                content: location.nearbyLandmarks!,
-                icon: Icons.place,
-              ),
-
-            if (location.accessibilityNotes != null && location.accessibilityNotes!.isNotEmpty)
-              _buildInfoSection(
-                context: context,
-                title: 'Informações de Acessibilidade',
-                content: location.accessibilityNotes!,
-                icon: Icons.accessible,
-              ),
 
             const SizedBox(height: 16),
 
-            if (location.latitude != null && location.longitude != null)
+            if (structure.centroid != null && 
+                structure.centroid!.coordinates != null &&
+                structure.centroid!.coordinates!.length >= 2)
               _buildMap(),
           ],
         ),
@@ -97,40 +82,10 @@ class LocationDetailPage extends StatelessWidget {
   }
 
   Widget _buildLocationIcon() {
-    IconData locationIcon;
-    Color iconColor;
+    IconData locationIcon = Icons.business;
+    Color iconColor = Colors.indigo;
 
-    switch (location.type) {
-      case 'classroom':
-        locationIcon = Icons.class_;
-        iconColor = Colors.blue;
-        break;
-      case 'laboratory':
-        locationIcon = Icons.science;
-        iconColor = Colors.green;
-        break;
-      case 'library':
-        locationIcon = Icons.menu_book;
-        iconColor = Colors.brown;
-        break;
-      case 'cafeteria':
-        locationIcon = Icons.restaurant;
-        iconColor = Colors.orange;
-        break;
-      case 'auditorium':
-        locationIcon = Icons.event_seat;
-        iconColor = Colors.purple;
-        break;
-      case 'block':
-      case 'building':
-        locationIcon = Icons.business;
-        iconColor = Colors.indigo;
-        break;
-      default:
-        locationIcon = Icons.location_on;
-        iconColor = Colors.red;
-    }
-
+    
     return CircleAvatar(
       radius: 30,
       backgroundColor: iconColor.withOpacity(0.2),
@@ -145,21 +100,11 @@ class LocationDetailPage extends StatelessWidget {
   Widget _buildInfoChips() {
     List<Widget> chips = [];
 
-    if (location.block != null && location.block!.isNotEmpty) {
-      chips.add(
-        Chip(
-          avatar: const Icon(Icons.business, size: 16),
-          label: Text('Bloco ${location.block}'),
-          backgroundColor: Colors.blue[100],
-        ),
-      );
-    }
-
-    if (location.floor != null) {
+    if (structure.floors != null && structure.floors!.isNotEmpty) {
       chips.add(
         Chip(
           avatar: const Icon(Icons.stairs, size: 16),
-          label: Text('Piso ${location.floor}'),
+          label: Text('Pisos: ${structure.floors!.join(", ")}'),
           backgroundColor: Colors.green[100],
         ),
       );
@@ -211,11 +156,15 @@ class LocationDetailPage extends StatelessWidget {
   }
 
   Widget _buildMap() {
-    if (location.latitude == null || location.longitude == null) {
+    if (structure.centroid?.coordinates == null || 
+        structure.centroid!.coordinates!.length < 2) {
       return const SizedBox.shrink();
     }
 
-    final latLng = LatLng(location.latitude!, location.longitude!);
+    // GeoJSON coordinates are [longitude, latitude]
+    final longitude = structure.centroid!.coordinates![0];
+    final latitude = structure.centroid!.coordinates![1];
+    final latLng = LatLng(latitude, longitude);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,7 +202,8 @@ class LocationDetailPage extends StatelessWidget {
                   subdomains: const ['a', 'b', 'c'],
                 ),
                 MarkerLayer(
-                  markers: [                    Marker(
+                  markers: [
+                    Marker(
                       width: 80.0,
                       height: 80.0,
                       point: latLng,
@@ -274,13 +224,16 @@ class LocationDetailPage extends StatelessWidget {
   }
 
   Widget _buildNavigationButtons(BuildContext context) {
+    final hasCoordinates = structure.centroid?.coordinates != null && 
+                          structure.centroid!.coordinates!.length >= 2;
+
     return BottomAppBar(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            if (location.latitude != null && location.longitude != null)
+            if (hasCoordinates)
               ElevatedButton.icon(
                 icon: const Icon(Icons.directions),
                 label: const Text('Navegar'),
@@ -306,10 +259,15 @@ class LocationDetailPage extends StatelessWidget {
   }
 
   void _openMaps() async {
-    if (location.latitude != null && location.longitude != null) {
-      final url = 'https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}';
-      if (await canLaunch(url)) {
-        await launch(url);
+    if (structure.centroid?.coordinates != null && 
+        structure.centroid!.coordinates!.length >= 2) {
+      final longitude = structure.centroid!.coordinates![0];
+      final latitude = structure.centroid!.coordinates![1];
+      final url = 'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude';
+      
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         Get.snackbar(
           'Erro',
@@ -322,41 +280,17 @@ class LocationDetailPage extends StatelessWidget {
 
   void _shareLocation() {
     final String locationInfo = '''
-    ${location.name} (${location.code})
-    ${_formatLocationType(location.type)}
-    ${location.block != null ? 'Bloco ${location.block}' : ''}
-    ${location.floor != null ? 'Piso ${location.floor}' : ''}
-    
-    Compartilhado via UniGo
+${structure.name} (ID: ${structure.id})
+${structure.description ?? ''}
+
+Compartilhado via UniGo
     ''';
     
     Get.snackbar(
       'Compartilhar',
       'Funcionalidade em desenvolvimento',
       snackPosition: SnackPosition.BOTTOM,
+      messageText: Text(locationInfo),
     );
-  }
-
-  String _formatLocationType(String type) {
-    switch (type) {
-      case 'classroom':
-        return 'Sala de Aula';
-      case 'laboratory':
-        return 'Laboratório';
-      case 'library':
-        return 'Biblioteca';
-      case 'cafeteria':
-        return 'Cantina';
-      case 'auditorium':
-        return 'Auditório';
-      case 'block':
-        return 'Bloco';
-      case 'building':
-        return 'Prédio';
-      case 'administrative':
-        return 'Administrativo';
-      default:
-        return 'Outro';
-    }
   }
 }

@@ -1,15 +1,27 @@
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../data/services/location_service.dart';
-import '../../../../data/models/location_model.dart';
+import '../../../../data/models/structure_model.dart';
+import '../../../../data/providers/location_provider.dart';
 import '../../../locations/presentation/location_detail_page.dart';
 import '../../../../routes/app_routes.dart';
 
 class LocationSearch extends GetWidget<LocationService> {
   final TextEditingController _searchController = TextEditingController();
-  final RxList<Location> _searchResults = <Location>[].obs;
+  final RxList<Structure> _searchResults = <Structure>[].obs;
   final RxBool _isSearching = false.obs;
-  
+  IconData getLocationIcon(String name) {
+  final n = name.toUpperCase();
+  if (n.contains('ESCADA')) return Icons.stairs;
+  if (n.contains('BANHEIRO')) return Icons.wc;
+  if (n.contains('SECRETARIA') || n.contains('COORDENAÇÃO')) return Icons.admin_panel_settings;
+  if (n.contains('BLOCO')) return Icons.apartment;
+  if (n.contains('LAB') || n.contains('LABORAT')) return Icons.science;
+  if (n.contains('SALA')) return Icons.meeting_room;
+  if (n.contains('BPCF')) return Icons.local_hospital;
+  return Icons.location_on;
+}
   LocationSearch({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
@@ -31,7 +43,8 @@ class LocationSearch extends GetWidget<LocationService> {
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Buscar salas, blocos, laboratórios...',
-              prefixIcon: const Icon(Icons.search),              suffixIcon: IconButton(
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   _searchController.clear();
@@ -44,7 +57,6 @@ class LocationSearch extends GetWidget<LocationService> {
             onChanged: _performSearch,
           ),
         ),
-        
         Obx(() {
           if (_isSearching.value) {
             return Container(
@@ -63,7 +75,6 @@ class LocationSearch extends GetWidget<LocationService> {
               ),
             );
           }
-          
           if (_searchResults.isNotEmpty) {
             return Container(
               margin: const EdgeInsets.only(top: 8),
@@ -93,57 +104,47 @@ class LocationSearch extends GetWidget<LocationService> {
               ),
             );
           }
-          
           return const SizedBox.shrink();
         }),
       ],
-    );  }
+    );
+  }
 
-  Widget _buildLocationItem(BuildContext context, Location location) {
+  Widget _buildLocationItem(BuildContext context, Structure structure) {
     final String subtitle = [
-      if (location.block != null) 'Bloco ${location.block}',
-      if (location.floor != null) 'Piso ${location.floor}',
+      if (structure.floors != null) 'Pisos: ${structure.floors!.join(", ")}',
     ].join(' • ');
-
-    IconData locationIcon;
-    switch (location.type) {
-      case 'classroom':
-        locationIcon = Icons.class_;
-        break;
-      case 'laboratory':
-        locationIcon = Icons.science;
-        break;
-      case 'library':
-        locationIcon = Icons.menu_book;
-        break;
-      case 'cafeteria':
-        locationIcon = Icons.restaurant;
-        break;
-      case 'auditorium':
-        locationIcon = Icons.event_seat;
-        break;
-      case 'block':
-      case 'building':
-        locationIcon = Icons.business;
-        break;
-      default:
-        locationIcon = Icons.location_on;
-    }
 
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Theme.of(context).primaryColor,
-        child: Icon(locationIcon, color: Colors.white),
+        child: Icon(getLocationIcon(structure.name), color: Colors.white),
       ),
       title: Text(
-        '${location.name} (${location.code})',
+        structure.name,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       subtitle: Text(subtitle),
-      onTap: () {
+      onTap: () async {
         _searchResults.clear();
         _searchController.clear();
-        Get.to(() => LocationDetailPage(location: location));
+        final coords = structure.centroid != null && structure.centroid['coordinates'] != null
+            ? structure.centroid['coordinates']
+            : null;
+        final int? roomId = structure.id;
+        final int? structureId = structure.structureId;
+        if (coords != null && coords.length >= 2 && structureId != null) {
+          final double lat = coords[1];
+          final double lng = coords[0];
+          final locationService = Get.find<LocationService>();
+          await locationService.fetchAndSetInternalRoute(
+            structureId: structureId,
+            roomId: roomId,
+            floor: 0,
+            end: [lat, lng],
+          );
+          print('[LocationSearch] Rota recebida: ${locationService.activeRoute.value?.steps}');
+        }
       },
     );
   }
@@ -153,27 +154,15 @@ class LocationSearch extends GetWidget<LocationService> {
       _searchResults.clear();
       return;
     }
-    
     _isSearching.value = true;
-    
     try {
-      print('Starting location search for query: $query');
-      final results = await controller.searchLocations(query);
-      print('Search returned ${results.length} results');
+  final results = await LocationProvider().searchStructures(query);
       _searchResults.value = results;
     } catch (e) {
-      print('Search error: $e');
-      String errorMessage = 'Não foi possível realizar a busca';
-      
-      if (e.toString().contains('No authentication token found')) {
-        errorMessage = 'Você precisa estar logado para realizar buscas';
-      } else if (e.toString().contains('Failed to search locations: 401')) {
-        errorMessage = 'Sua sessão expirou. Por favor, faça login novamente';
-      }
-      
+      print('Erro ao buscar: $e');
       Get.snackbar(
-        'Erro', 
-        errorMessage,
+        'Erro',
+        'Não foi possível buscar estruturas',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red[100],
         colorText: Colors.red[900],

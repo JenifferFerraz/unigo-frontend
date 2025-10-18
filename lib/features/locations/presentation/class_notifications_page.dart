@@ -1,3 +1,4 @@
+import '../../../data/models/structure_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/location_controller.dart';
@@ -185,15 +186,15 @@ class ClassNotificationsPage extends StatelessWidget {
               children: [
                 TextButton.icon(
                   onPressed: () {
-                    final location = Location(
-                      id: 0, 
+                    final structure = Structure(
+                      id: 0,
                       name: classNotification.locationName,
-                      code: classNotification.locationCode,
-                      type: 'classroom', 
-                      block: classNotification.block,
-                      floor: classNotification.floor,
+                      description: null,
+                      geometry: null,
+                      centroid: null,
+                      floors: classNotification.floor != null ? [classNotification.floor!] : null,
                     );
-                    Get.to(() => LocationDetailPage(location: location));
+                    Get.to(() => LocationDetailPage(structure: structure));
                   },
                   icon: const Icon(Icons.explore),
                   label: const Text('Ver Local'),
