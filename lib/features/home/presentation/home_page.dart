@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/atoms/map/map_widget.dart';
 import '../../../data/services/location_service.dart';
 import '../../../routes/app_routes.dart';
@@ -18,6 +17,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedLayer = 0;
+  bool _isFeedbackHovered = false;
   final List<String> _layerNames = [
     '1º Andar',
     '2º Andar',
@@ -106,6 +106,63 @@ class _HomePageState extends State<HomePage> {
               right: 16,
               child: LocationSearch(),
             ),
+          // Visitor-only lateral Feedback tab
+          if (isVisitor)
+            Positioned(
+              left: 0,
+              top: MediaQuery.of(context).size.height * 0.60,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onEnter: (_) => setState(() => _isFeedbackHovered = true),
+                onExit: (_) => setState(() => _isFeedbackHovered = false),
+                child: GestureDetector(
+                  onTap: () {
+                    Get.toNamed(AppRoutes.FEEDBACK, arguments: {'visitor': true});
+                  },
+                  onTapDown: (_) => setState(() => _isFeedbackHovered = true),
+                  onTapUp: (_) => setState(() => _isFeedbackHovered = false),
+                  onTapCancel: () => setState(() => _isFeedbackHovered = false),
+                  child: AnimatedScale(
+                    scale: _isFeedbackHovered ? 1.20 : 1.0,
+                    duration: const Duration(milliseconds: 120),
+                    curve: Curves.easeOut,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF3C3CC0),
+                        borderRadius: BorderRadius.only(
+                          topRight: Radius.circular(8),
+                          bottomRight: Radius.circular(8),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: RotatedBox(
+                        quarterTurns: 1,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            SizedBox(width: 6),
+                            Text(
+                              'Feedback',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
       floatingActionButton: Column(
@@ -135,44 +192,4 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildQuickButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

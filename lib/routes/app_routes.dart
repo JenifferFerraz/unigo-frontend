@@ -9,10 +9,10 @@ import '../data/middleware/auth_middleware.dart';
 import '../features/splash/presentation/splash_page.dart';
 import '../features/schedule/presentation/schedule_page.dart';
 import '../features/calendar/presentation/calendar_page.dart';
-import '../features/locations/presentation/location_search_page.dart';
-import '../features/locations/presentation/class_notifications_page.dart';
+// import '../features/locations/presentation/location_search_page.dart';
+// import '../features/locations/presentation/class_notifications_page.dart';
 import '../features/feedback/presentation/feedback_page.dart';
-import '../features/locations/location_binding.dart';
+// import '../features/locations/location_binding.dart';
 import '../features/exams/presentation/exams_page.dart';
 import '../features/auth/presentation/access_selection_page.dart';
 import '../features/admin/presentation/admin_upload_page.dart';
@@ -96,7 +96,7 @@ abstract class AppRoutes {
     GetPage(
       name: FEEDBACK,
       page: () => const FeedbackPage(),
-      middlewares: [AuthMiddleware()],
+      // Disponível também para visitantes; mantém argumentos para voltar ao modo visitante
     ),
   ];
 }
