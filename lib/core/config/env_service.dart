@@ -1,3 +1,5 @@
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EnvService {
@@ -6,10 +8,12 @@ class EnvService {
   }
 
   static String get apiBaseUrl => dotenv.env['API_URL'] ?? 'http://localhost:3000';
-  static String get socketUrl => dotenv.env['SOCKET_URL'] ?? 'http://localhost:3000';
+  static String get socketUrl => kIsWeb
+      ? 'ws://localhost:3000'
+      : (dotenv.env['SOCKET_URL'] ?? 'ws://localhost:3000');
   
   static String get googleMapsApiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   
-  static String get appName => dotenv.env['APP_NAME'] ?? 'UniGo';
+  static String get appName => dotenv.env['APP_NAME'] ?? 'UniGo'; 
   static String get appEnv => dotenv.env['APP_ENV'] ?? 'development';
 } 

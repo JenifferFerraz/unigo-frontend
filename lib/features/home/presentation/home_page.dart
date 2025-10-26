@@ -7,6 +7,7 @@ import '../../../data/services/location_service.dart';
 import '../../../routes/app_routes.dart';
 import './components/sidebar.dart';
 import './components/location_search.dart';
+import '../../../data/services/websocket_service.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -18,6 +19,90 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locationService = Get.isRegistered<LocationService>() ? Get.find<LocationService>() : null;
+    if (locationService != null) {
+      ever(locationService.nearestStructure, (nearest) async {
+        if (nearest != null && nearest['floors'] != null && nearest['floors'] is List && (nearest['floors'] as List).isNotEmpty) {
+          final floors = List<int>.from(nearest['floors']);
+          // Se só tem um andar, seleciona automaticamente
+          if (floors.length == 1) {
+            setState(() {
+              _selectedLayer = floors[0];
+            });
+            // Envia para o websocket (fluxo já implementado no LocationService)
+          } else {
+            // Exibe dialog para o usuário escolher o andar
+            final selected = await showDialog<int>(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: const Text('Escolha o andar'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: floors.map((f) => ListTile(
+                      title: Text(_layerNames.length > f ? _layerNames[f] : 'Andar $f'),
+                      onTap: () => Navigator.of(context).pop(f),
+                    )).toList(),
+                  ),
+                );
+              },
+            );
+            if (selected != null) {
+              setState(() {
+                _selectedLayer = selected;
+              });
+              // Envia para o websocket com o andar escolhido
+              final pos = locationService.currentPosition.value;
+              if (pos != null) {
+                try {
+                  WebSocketService ws;
+                  if (!Get.isRegistered<WebSocketService>()) {
+                    ws = Get.put(WebSocketService());
+                    await ws.connect();
+                  } else {
+                    ws = Get.find<WebSocketService>();
+                    if (!ws.isConnected.value) {
+                      await ws.connect();
+                    }
+                  }
+                  if (ws.isConnected.value) {
+                    ws.sendPosition(
+                      position: [pos.longitude, pos.latitude],
+                      structureId: nearest['id'],
+                      floor: selected,
+                    );
+                  }
+                } catch (e) {
+                  print('[HomePage] Erro ao enviar posição para WebSocket após escolha de andar: $e');
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+  @override
+  void initState() {
+    super.initState();
+    // Garante que o WebSocketService está conectado
+    Future.microtask(() async {
+      try {
+        final ws = Get.isRegistered<WebSocketService>() ? Get.find<WebSocketService>() : null;
+        if (ws != null && !ws.isConnected.value) {
+          await ws.connect();
+        } else if (ws == null) {
+          final newWs = Get.put(WebSocketService());
+          await newWs.connect();
+        }
+      } catch (e) {
+        print('[HomePage] Erro ao conectar WebSocketService: $e');
+      }
+    });
+  }
   int _selectedLayer = 0;
   final List<String> _layerNames = [
     '1º Andar',
@@ -107,7 +192,7 @@ class _HomePageState extends State<HomePage> {
               right: 16,
               child: LocationSearch(),
             ),
-          // AVISO DE LOCALIZAÇÃO
+  
           Obx(() {
             final position = controller?.currentPosition.value;
             if (position == null) {
