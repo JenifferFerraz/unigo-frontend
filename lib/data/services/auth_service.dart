@@ -9,6 +9,7 @@ import '../models/user_model.dart';
 import '../../core/config/env_service.dart';
 import 'dart:convert';
 import './location_service.dart';
+import './websocket_service.dart';
 
 class AuthService extends GetxService {
   final StorageService storage = Get.find<StorageService>();
@@ -136,11 +137,22 @@ class AuthService extends GetxService {
           Get.offAllNamed(AppRoutes.TERMS);
           return true;
         }
-        // Inicializa LocationService após login, sem solicitar permissão
+        
+        // Inicializa LocationService após login
         if (Get.isRegistered<LocationService>()) {
           await Get.delete<LocationService>();
         }
         await Get.putAsync(() => LocationService().init());
+        
+        // 🔥 Inicializa e conecta WebSocket após login bem-sucedido
+        print('[AuthService] Inicializando WebSocket...');
+        if (Get.isRegistered<WebSocketService>()) {
+          await Get.delete<WebSocketService>();
+        }
+        final ws = Get.put(WebSocketService());
+        await ws.connect();
+        print('[AuthService] ✓ WebSocket conectado');
+        
         return true;
       }
       
@@ -164,12 +176,35 @@ class AuthService extends GetxService {
       isLoading.value = false;
     }
   }
-  /// Limpa dados locais e redireciona para tela de login
 
   Future<void> logout() async {
-    await storage.clearUserData();
-    currentUser.value = null;
-    Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
+    try {
+      // Limpa dados de localização
+      if (Get.isRegistered<LocationService>()) {
+        final locationService = Get.find<LocationService>();
+        locationService.clearAllData();
+      }
+      
+      // Desconecta e limpa WebSocket
+      if (Get.isRegistered<WebSocketService>()) {
+        final wsService = Get.find<WebSocketService>();
+        await wsService.disconnect();
+        await wsService.clearSessionId();
+      }
+      
+      // Limpa dados de autenticação
+      await storage.clearUserData();
+      currentUser.value = null;
+      
+      // Navega para tela de login
+      Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
+    } catch (e) {
+      print('[AuthService] Erro durante logout: $e');
+      // Mesmo com erro, força logout
+      await storage.clearUserData();
+      currentUser.value = null;
+      Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
+    }
   }
   /// Solicita permissão de localização ao usuário
 

@@ -137,13 +137,48 @@ class LocationSearch extends GetWidget<LocationService> {
           final double lat = coords[1];
           final double lng = coords[0];
           final locationService = Get.find<LocationService>();
+          
+          // Determinar o andar inicial do usuário
+          int startFloor = 0; // padrão: térreo
+          
+          // Verificar se o usuário está dentro da estrutura
+          final userPos = locationService.currentPosition.value;
+          final nearestStructure = locationService.nearestStructure.value;
+          
+          if (userPos != null && nearestStructure != null && nearestStructure['id'] == structureId) {
+            // Usuário está dentro da estrutura de destino, perguntar em qual andar
+            final floors = structure.floors ?? [0];
+            if (floors.length > 1) {
+              final selected = await showDialog<int>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Em qual andar você está?'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: floors.map((floor) => ListTile(
+                      title: Text('Andar $floor'),
+                      onTap: () => Navigator.of(ctx).pop(floor),
+                    )).toList(),
+                  ),
+                ),
+              );
+              if (selected != null) {
+                startFloor = selected;
+              } else {
+                return; // Usuário cancelou
+              }
+            } else if (floors.isNotEmpty) {
+              startFloor = floors[0];
+            }
+          }
+          
           await locationService.fetchAndSetInternalRoute(
             structureId: structureId,
             roomId: roomId,
-            floor: 0,
+            floor: startFloor,
             end: [lat, lng],
           );
-          print('[LocationSearch] Rota recebida: ${locationService.activeRoute.value?.steps}');
+          print('[LocationSearch] Rota recebida do andar $startFloor: ${locationService.activeRoute.value?.steps}');
         }
       },
     );

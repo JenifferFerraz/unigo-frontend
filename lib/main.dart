@@ -7,12 +7,10 @@ import 'data/services/auth_service.dart';
 import 'data/services/storage_service.dart';
 import 'data/services/location_service.dart';
 import 'data/services/upload_image_services.dart';
-import 'data/services/websocket_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  Get.put(WebSocketService());
-  await Get.find<WebSocketService>().connect();
+  
   await dotenv.load(fileName: ".env");
   await EnvService.init();
 

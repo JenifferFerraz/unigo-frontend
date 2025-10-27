@@ -154,7 +154,25 @@ class _HomePageState extends State<HomePage> {
         leading: isVisitor
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Get.offAllNamed(AppRoutes.ACCESS_SELECTION),
+                onPressed: () async {
+                  // Limpa dados do visitante antes de sair
+                  print('[HomePage] Visitante saindo, limpando dados...');
+                  
+                  if (Get.isRegistered<LocationService>()) {
+                    final locationService = Get.find<LocationService>();
+                    locationService.clearAllData();
+                    print('[HomePage] ✓ LocationService limpo');
+                  }
+                  
+                  if (Get.isRegistered<WebSocketService>()) {
+                    final wsService = Get.find<WebSocketService>();
+                    await wsService.disconnect();
+                    await wsService.clearSessionId();
+                    print('[HomePage] ✓ WebSocket desconectado');
+                  }
+                  
+                  Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
+                },
               )
             : Builder(
                 builder: (context) => IconButton(

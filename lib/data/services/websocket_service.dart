@@ -37,15 +37,11 @@ class WebSocketService extends GetxService {
   }
 
   void send(dynamic data) {
-    print('[WebSocketService] Tentando enviar: '
-        + jsonEncode(data));
     if (isConnected.value) {
       channel.sink.add(jsonEncode(data));
-      print('[WebSocketService] Enviado com sucesso!');
-    } else {
-      print('[WebSocketService] Não está conectado ao WebSocket.');
     }
   }
+  
   void sendPosition({
     required List<double> position,
     int? structureId,
@@ -56,13 +52,17 @@ class WebSocketService extends GetxService {
       'structureId': structureId,
       'floor': floor,
     };
-    print('[WebSocketService] Chamando sendPosition: $data');
     send(data);
   }
 
   void _handleMessage(dynamic message) {
-    print('[WebSocketService] Mensagem recebida: $message');
     final data = jsonDecode(message);
+    
+    // Verifica se LocationService está registrado antes de usar
+    if (!Get.isRegistered<LocationService>()) {
+      return;
+    }
+    
     final locationService = Get.find<LocationService>();
     if (data['type'] == 'roomsOnFloor') {
       if (data['rooms'] is List) {
@@ -73,9 +73,39 @@ class WebSocketService extends GetxService {
     }
   }
 
+  /// Limpa dados da sessão atual (salas, estrutura, etc.)
+  void clearSessionData() {
+    if (Get.isRegistered<LocationService>()) {
+      final locationService = Get.find<LocationService>();
+      locationService.roomsOnFloor.clear();
+      locationService.nearestStructure.value = null;
+    }
+  }
+
+  /// Desconecta WebSocket e limpa todos os dados
+  Future<void> disconnect() async {
+    try {
+      clearSessionData();
+      
+      if (isConnected.value) {
+        await channel.sink.close(status.goingAway);
+        isConnected.value = false;
+      }
+    } catch (e) {
+      print('[WebSocketService] Erro ao desconectar: $e');
+      isConnected.value = false;
+    }
+  }
+
+  /// Remove sessionId do SharedPreferences (usado no logout)
+  Future<void> clearSessionId() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('session_id');
+  }
+
   @override
   void onClose() {
-    channel.sink.close(status.goingAway);
+    disconnect();
     super.onClose();
   }
 }
