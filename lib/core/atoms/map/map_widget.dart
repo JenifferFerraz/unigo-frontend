@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
 import '../../../data/services/location_service.dart';
+import 'animated_user_marker.dart';
 
 class MapWidget extends StatefulWidget {
   static LatLng? _selectedDestination;
@@ -158,27 +159,9 @@ class _MapWidgetState extends State<MapWidget> {
                   if (widget.showUserLocation && position != null)
                     Marker(
                       point: center,
-                      width: 40,
-                      height: 40,
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.3),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.blue, width: 4),
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ),
+                      width: 80,
+                      height: 80,
+                      child: const AnimatedUserMarker(),
                     ),
                   if (MapWidget._selectedDestination != null)
                     Marker(

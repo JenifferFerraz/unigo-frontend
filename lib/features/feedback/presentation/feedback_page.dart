@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../routes/app_routes.dart';
 import '../../../data/services/feedback_service.dart';
+import '../../../data/services/auth_service.dart';
+import '../../home/presentation/components/sidebar.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
 
@@ -343,24 +345,48 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    // Verifica se é visitante
+    final authService = Get.find<AuthService>();
+    final isVisitor = authService.currentUser.value == null || 
+                      (Get.arguments != null && Get.arguments['visitor'] == true);
+    
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
+      drawer: isVisitor ? null : Sidebar(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF3C3CC0),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (_currentStep > 0) {
-              setState(() {
-                _currentStep -= 1;
-              });
-            } else {
-              // Voltar para a Home (/) quando estiver no primeiro step
-              Get.offAllNamed(AppRoutes.HOME);
-            }
-          },
-        ),
+        leading: isVisitor
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  if (_currentStep > 0) {
+                    setState(() {
+                      _currentStep -= 1;
+                    });
+                  } else {
+                    // Visitante: voltar para HOME
+                    Get.offAllNamed(AppRoutes.HOME);
+                  }
+                },
+              )
+            : (_currentStep > 0
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        _currentStep -= 1;
+                      });
+                    },
+                  )
+                : Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: () {
+                        Scaffold.of(context).openDrawer();
+                      },
+                    ),
+                  )),
         title: const Text(''),
       ),
       body: SafeArea(

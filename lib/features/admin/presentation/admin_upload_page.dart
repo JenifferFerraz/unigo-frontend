@@ -6,6 +6,7 @@ import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../routes/app_routes.dart';
+import '../../home/presentation/components/sidebar.dart';
 
 class AdminUploadPage extends StatelessWidget {
   const AdminUploadPage({Key? key}) : super(key: key);
@@ -15,32 +16,30 @@ class AdminUploadPage extends StatelessWidget {
     const appBlue = Color(0xFF3C3CC0);
     return Scaffold(
       backgroundColor: Colors.white,
+      drawer: Sidebar(),
+      appBar: AppBar(
+        backgroundColor: appBlue,
+        elevation: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
+        title: const Text('Menu Admin', style: TextStyle(color: Colors.white)),
+        centerTitle: true,
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            color: appBlue,
-            padding: const EdgeInsets.only(top: 48, bottom: 16),
-            child: Center(
-              child: Image.asset(
-                'assets/images/Logo.png',
-                height: 56,
-                color: Colors.white,
-              ),
-            ),
-          ),
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _AdminNavButton(
-                  icon: Icons.location_on,
-                  label: 'Localização',
-                  color: appBlue,
-                  onTap: () => Get.toNamed(AppRoutes.LOCATION_SEARCH),
-                ),
                 const SizedBox(height: 20),
                 _AdminNavButton(
                   icon: Icons.schedule,

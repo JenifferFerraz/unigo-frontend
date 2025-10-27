@@ -237,16 +237,84 @@ class _HomePageState extends State<HomePage> {
                       ),
                       TextButton(
                         onPressed: () async {
-                          final permission = await controller?.requestLocationPermission();
-                          if (permission == true) {
-                            await controller?.getCurrentLocation();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(controller?.error.value ?? 'Permissão de localização negada.'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
+                          // Mostra loading
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const LoadingScreen(
+                              message: 'Obtendo sua localização...',
+                            ),
+                          );
+                          
+                          try {
+                            // Solicita permissão
+                            final permission = await controller?.requestLocationPermission();
+                            
+                            if (permission == true) {
+                              // Se permissão concedida, obtém localização
+                              await controller?.getCurrentLocation();
+                              
+                              // Aguarda até ter precisão adequada ou timeout
+                              int attempts = 0;
+                              while (attempts < 10) {
+                                await Future.delayed(const Duration(milliseconds: 500));
+                                final currentPos = controller?.currentPosition.value;
+                                if (currentPos != null && currentPos.accuracy <= 20) {
+                                  // Localização com boa precisão obtida
+                                  break;
+                                }
+                                attempts++;
+                              }
+                              
+                              // Fecha loading
+                              if (mounted && Navigator.of(context).canPop()) {
+                                Navigator.of(context).pop();
+                              }
+                              
+                              // Mostra sucesso
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('✓ Localização ativada com sucesso!'),
+                                    backgroundColor: Colors.green,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            } else {
+                              // Permissão negada
+                              if (mounted && Navigator.of(context).canPop()) {
+                                Navigator.of(context).pop();
+                              }
+                              
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      controller?.error.value ?? 
+                                      'Permissão de localização negada. Por favor, ative nas configurações do dispositivo.',
+                                    ),
+                                    backgroundColor: Colors.orange,
+                                    duration: const Duration(seconds: 4),
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            // Erro ao obter localização
+                            if (mounted && Navigator.of(context).canPop()) {
+                              Navigator.of(context).pop();
+                            }
+                            
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Erro ao obter localização: $e'),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            }
                           }
                         },
                         child: const Text('Ativar', style: TextStyle(color: Colors.orange)),
