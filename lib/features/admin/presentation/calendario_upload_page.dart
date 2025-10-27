@@ -9,8 +9,8 @@ class CalendarioUploadPage extends StatelessWidget {
     return const AdminSpreadsheetUpload(
       title: 'Calendário',
       instructions: 'Envie a planilha de calendário. Aceito: .xlsx, .xls, .csv',
-  uploadEndpoint: '/admin/upload/calendario',
-      downloadUrl: '',
+      uploadEndpoint: '/upload/calendar',
+      templateType: 'calendar',
     );
   }
 }

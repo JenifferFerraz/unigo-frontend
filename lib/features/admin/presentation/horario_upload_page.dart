@@ -9,8 +9,8 @@ class HorarioUploadPage extends StatelessWidget {
     return const AdminSpreadsheetUpload(
       title: 'Horário de Aulas',
       instructions: 'Envie a planilha de horário. Aceito: .xlsx, .xls, .csv',
-  uploadEndpoint: '/admin/upload/horario',
-      downloadUrl: '',
+      uploadEndpoint: '/upload/schedule',
+      templateType: 'schedule',
     );
   }
 }

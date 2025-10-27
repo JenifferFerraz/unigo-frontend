@@ -88,8 +88,29 @@ class StorageService extends GetxService {
 
   Future<void> clearUserData() async {
     try {
+      // Limpa token em memória
+      token.value = null;
+      
+      // Deleta a chave user_data
       await _storage.delete(
         key: 'user_data',
+        aOptions: const AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+        iOptions: const IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Limpa TODOS os dados do armazenamento seguro (use com cuidado)
+  Future<void> clearAllStorage() async {
+    try {
+      token.value = null;
+      await _storage.deleteAll(
         aOptions: const AndroidOptions(
           encryptedSharedPreferences: true,
         ),

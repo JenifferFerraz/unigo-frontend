@@ -179,29 +179,40 @@ class AuthService extends GetxService {
 
   Future<void> logout() async {
     try {
-      // Limpa dados de localização
+      print('[AuthService] Iniciando logout...');
+      
+      // 1. Limpa dados de localização
       if (Get.isRegistered<LocationService>()) {
         final locationService = Get.find<LocationService>();
         locationService.clearAllData();
+        print('[AuthService] ✓ LocationService limpo');
       }
       
-      // Desconecta e limpa WebSocket
+      // 2. Desconecta e limpa WebSocket + SharedPreferences
       if (Get.isRegistered<WebSocketService>()) {
         final wsService = Get.find<WebSocketService>();
         await wsService.disconnect();
         await wsService.clearSessionId();
+        print('[AuthService] ✓ WebSocket desconectado e sessionId removido');
       }
       
-      // Limpa dados de autenticação
+      // 3. Limpa dados de autenticação (FlutterSecureStorage)
       await storage.clearUserData();
-      currentUser.value = null;
+      print('[AuthService] ✓ Storage limpo (user_data e token)');
       
-      // Navega para tela de login
+      // 4. Limpa estado em memória
+      currentUser.value = null;
+      print('[AuthService] ✓ CurrentUser limpo');
+      
+      // 5. Navega para tela de seleção
       Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
+      print('[AuthService] ✓ Logout completo');
     } catch (e) {
-      print('[AuthService] Erro durante logout: $e');
-      // Mesmo com erro, força logout
-      await storage.clearUserData();
+      print('[AuthService] ❌ Erro durante logout: $e');
+      // Mesmo com erro, força logout completo
+      try {
+        await storage.clearUserData();
+      } catch (_) {}
       currentUser.value = null;
       Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
     }

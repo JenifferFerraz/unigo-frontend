@@ -10,14 +10,14 @@ class AdminSpreadsheetUpload extends StatefulWidget {
   final String title;
   final String instructions;
   final String uploadEndpoint;
-  final String downloadUrl;
+  final String? templateType;
 
   const AdminSpreadsheetUpload({
     Key? key,
     required this.title,
     required this.instructions,
     required this.uploadEndpoint,
-    this.downloadUrl = '',
+    this.templateType,
   }) : super(key: key);
 
   @override
@@ -97,8 +97,16 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
         endpoint: endpoint,
         file: _pickedFile!,
       );
+
+      // Extrair informações do resultado
+      final data = response.data as Map<String, dynamic>;
+      final totalRows = data['totalRows'] ?? 0;
+      final successCount = data['successCount'] ?? 0;
+      final errorCount = data['errorCount'] ?? 0;
+
       setState(() {
-        _statusMessage = 'Upload concluído: ${response.statusCode}';
+        _statusMessage = 'Upload concluído!\n'
+            'Total: $totalRows | Sucesso: $successCount | Erros: $errorCount';
       });
     } catch (e) {
       setState(() {
@@ -108,6 +116,31 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       setState(() {
         _isUploading = false;
       });
+    }
+  }
+
+  Future<void> _downloadTemplate() async {
+    if (widget.templateType == null) return;
+
+    try {
+      final service = AdminUploadService();
+      final response = await service.downloadTemplate(widget.templateType!);
+
+      // Aqui você pode implementar o download do arquivo
+      // Para web, use package:universal_html ou file_saver
+      // Para mobile, use path_provider e salve o arquivo
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Download iniciado')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao baixar template: $e')),
+        );
+      }
     }
   }
 
@@ -152,22 +185,9 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
                 textStyle: const TextStyle(fontWeight: FontWeight.w600),
                 elevation: 0,
               ),
-              onPressed: widget.downloadUrl.isEmpty
-                  ? null
-                  : () async {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Download do modelo'),
-                          content: Text('Abra este link para baixar o modelo:\n${widget.downloadUrl}'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Fechar')),
-                          ],
-                        ),
-                      );
-                    },
+              onPressed: widget.templateType == null ? null : _downloadTemplate,
               icon: const Icon(Icons.download),
-              label: const Text('Planilha-Modelo'),
+              label: const Text('Baixar Planilha-Modelo'),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(

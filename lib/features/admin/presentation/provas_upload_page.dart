@@ -9,8 +9,8 @@ class ProvasUploadPage extends StatelessWidget {
     return const AdminSpreadsheetUpload(
       title: 'Provas',
       instructions: 'Envie a planilha de provas. Aceito: .xlsx, .xls, .csv',
-  uploadEndpoint: '/admin/upload/provas',
-      downloadUrl: '',
+      uploadEndpoint: '/upload/exams',
+      templateType: 'exams',
     );
   }
 }

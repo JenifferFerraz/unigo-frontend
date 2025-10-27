@@ -69,6 +69,13 @@ class AdminUploadPage extends StatelessWidget {
                   color: appBlue,
                   onTap: () => Get.toNamed(AppRoutes.ADMIN_UPLOAD_PROVAS),
                 ),
+                const SizedBox(height: 20),
+                _AdminNavButton(
+                  icon: Icons.analytics,
+                  label: 'Estatísticas de Feedback',
+                  color: Colors.purple,
+                  onTap: () => Get.toNamed(AppRoutes.ADMIN_FEEDBACK_STATS),
+                ),
               ],
             ),
           ),

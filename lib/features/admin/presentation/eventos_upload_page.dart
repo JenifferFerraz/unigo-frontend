@@ -9,8 +9,8 @@ class EventosUploadPage extends StatelessWidget {
     return const AdminSpreadsheetUpload(
       title: 'Eventos',
       instructions: 'Envie a planilha de eventos. Aceito: .xlsx, .xls, .csv',
-  uploadEndpoint: '/admin/upload/eventos',
-      downloadUrl: '',
+      uploadEndpoint: '/upload/events',
+      templateType: 'events',
     );
   }
 }

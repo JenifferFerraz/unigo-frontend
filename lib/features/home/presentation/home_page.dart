@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/atoms/map/map_widget.dart';
 import '../../../core/atoms/loading_screen.dart';
 import '../../../data/services/location_service.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../routes/app_routes.dart';
 import './components/sidebar.dart';
 import './components/location_search.dart';
+import './components/feedback_tab.dart';
 import '../../../data/services/websocket_service.dart';
 
 
@@ -120,7 +121,10 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-  final isVisitor = (Get.arguments != null && Get.arguments['visitor'] == true);
+  // Verifica se é visitante: sem usuário autenticado OU argumento visitor=true
+  final authService = Get.find<AuthService>();
+  final isVisitor = authService.currentUser.value == null || 
+                     (Get.arguments != null && Get.arguments['visitor'] == true);
 
     LocationService? controller;
     try {
@@ -254,6 +258,9 @@ class _HomePageState extends State<HomePage> {
             }
             return const SizedBox.shrink();
           }),
+
+          // Aba lateral de Feedback para visitantes
+          if (isVisitor) const FeedbackTab(),
         ],
       ),
       floatingActionButton: Column(
@@ -288,44 +295,4 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildQuickButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

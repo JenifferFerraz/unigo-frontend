@@ -94,6 +94,15 @@ class Sidebar extends StatelessWidget {
                   Get.toNamed(AppRoutes.EXAMS);
                 },
               ),
+              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+              _buildMenuItem(
+                icon: Icons.feedback,
+                title: 'Feedback',
+                onTap: () {
+                  Get.back();
+                  Get.toNamed(AppRoutes.FEEDBACK);
+                },
+              ),
               if (_authService.currentUser.value?.role == 'admin') ...[
                 const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
                 _buildMenuItem(
