@@ -71,12 +71,13 @@ class _CalendarPageState extends State<CalendarPage> {
       drawer: Sidebar(),
       body: Center(
         child: Container(
-          width: 430,
+          constraints: BoxConstraints(maxWidth: 500),
+          width: MediaQuery.of(context).size.width < 520 ? MediaQuery.of(context).size.width - 16 : 500,
           margin: const EdgeInsets.symmetric(vertical: 32, horizontal: 8),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.08),
@@ -239,22 +240,21 @@ class _CalendarPageState extends State<CalendarPage> {
                         ],
                       ),
                     ),
-                  if (selectedEvents.length > 3 && !_expanded)
-                    TextButton(
-                      onPressed: () => setState(() => _expanded = true),
-                      child: Text('Mostrar mais (${selectedEvents.length - 3})'),
-                    ),
-                  if (_expanded)
-                    TextButton(
-                      onPressed: () => setState(() => _expanded = false),
-                      child: const Text('Mostrar menos'),
+                  if (selectedEvents.length > 3)
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => setState(() => _expanded = !_expanded),
+                        icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more, color: Color(0xFF3C3CC0)),
+                        label: Text(_expanded
+                            ? 'Mostrar menos'
+                            : 'Mostrar mais (${selectedEvents.length - 3})',
+                          style: TextStyle(color: Color(0xFF3C3CC0), fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
                 ],
 
                 const SizedBox(height: 8),
-                Center(
-                  child: Icon(Icons.keyboard_arrow_down, color: Color(0xFF3C3CC0)),
-                ),
               ],
             ),
           ),

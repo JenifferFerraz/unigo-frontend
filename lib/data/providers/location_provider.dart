@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/location_model.dart';
+import '../models/structure_model.dart';
 import '../models/navigation_model.dart';
 import '../services/storage_service.dart';
 import '../../core/config/env_service.dart';
@@ -11,53 +12,47 @@ class LocationProvider {
     baseUrl: EnvService.apiBaseUrl,
     responseType: ResponseType.json,
   ));
-  Future<List<Location>> getAllLocations({
-    String? type,
-    String? block,
-    int? floor,
-    String? search,
-  }) async {
+
+  Future<List<Structure>> searchStructures(String query) async {
+    try {
+      // Busca de estruturas é pública, não requer autenticação (visitantes podem usar)
+      final response = await _dio.get(
+        '/room/all',
+        queryParameters: {'search': query},
+      );
+      if (response.statusCode == 200) {
+        return (response.data as List)
+            .map((item) => Structure.fromJson(item))
+            .toList();
+      }
+      throw 'Failed to search structures: ${response.statusCode}';
+    } catch (e) {
+      throw 'Error searching structures: $e';
+    }
+  }
+  Future<List<Structure>> getAllStructures() async {
     try {
       final storageService = Get.find<StorageService>();
       final token = storageService.token.value;
       if (token == null) {
         throw 'No authentication token found';
       }
-      
       final response = await _dio.get(
-        '/locations',
-        queryParameters: {
-          if (type != null) 'type': type,
-          if (block != null) 'block': block,
-          if (floor != null) 'floor': floor,
-          if (search != null) 'search': search,
-        },
+        '/room/all',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-
       if (response.statusCode == 200) {
         return (response.data as List)
-            .map((item) => Location.fromJson(item))
+            .map((item) => Structure.fromJson(item))
             .toList();
       }
-      throw 'Failed to load locations';
+      throw 'Failed to load structures';
     } catch (e) {
-      throw 'Error fetching locations: $e';
+      throw 'Error fetching structures: $e';
     }
   }
 
-  Future<List<String>> getBlocks() async {
-    try {
-      final response = await _dio.get('/locations/blocks');
-
-      if (response.statusCode == 200) {
-        return (response.data as List).map((item) => item.toString()).toList();
-      }
-      throw 'Failed to load blocks';
-    } catch (e) {
-      throw 'Error fetching blocks: $e';
-    }
-  }
+  // ...existing code for getBlocks, getUpcomingClasses, getNavigationRoute...
   Future<List<Location>> searchLocations(String query) async {
     try {
       final storageService = Get.find<StorageService>();

@@ -42,6 +42,8 @@ class StorageService extends GetxService {
           accessibility: KeychainAccessibility.first_unlock,
         ),
       );
+      // Atualiza o token em memória imediatamente após salvar
+      token.value = userData['token'] as String?;
     } catch (e) {
       rethrow;
     }
@@ -84,11 +86,31 @@ class StorageService extends GetxService {
     return data?['refreshToken'];
   }
 
-  /// Remove todos os dados do usuário do armazenamento
   Future<void> clearUserData() async {
     try {
+      // Limpa token em memória
+      token.value = null;
+      
+      // Deleta a chave user_data
       await _storage.delete(
         key: 'user_data',
+        aOptions: const AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+        iOptions: const IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Limpa TODOS os dados do armazenamento seguro (use com cuidado)
+  Future<void> clearAllStorage() async {
+    try {
+      token.value = null;
+      await _storage.deleteAll(
         aOptions: const AndroidOptions(
           encryptedSharedPreferences: true,
         ),

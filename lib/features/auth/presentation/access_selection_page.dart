@@ -26,7 +26,7 @@ class AccessSelectionPage extends StatelessWidget {
                     children: [
                       const SizedBox(height: 32),
                       Image.asset('assets/images/Logo.png', height: 100),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: Image.asset(
@@ -35,7 +35,7 @@ class AccessSelectionPage extends StatelessWidget {
                           fit: BoxFit.cover,
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24.0),
                         child: Column(

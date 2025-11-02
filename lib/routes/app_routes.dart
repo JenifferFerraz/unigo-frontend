@@ -9,13 +9,16 @@ import '../data/middleware/auth_middleware.dart';
 import '../features/splash/presentation/splash_page.dart';
 import '../features/schedule/presentation/schedule_page.dart';
 import '../features/calendar/presentation/calendar_page.dart';
-// import '../features/locations/presentation/location_search_page.dart';
-// import '../features/locations/presentation/class_notifications_page.dart';
 import '../features/feedback/presentation/feedback_page.dart';
-// import '../features/locations/location_binding.dart';
 import '../features/exams/presentation/exams_page.dart';
 import '../features/auth/presentation/access_selection_page.dart';
 import '../features/admin/presentation/admin_upload_page.dart';
+import '../features/admin/presentation/horario_upload_page.dart';
+import '../features/admin/presentation/eventos_upload_page.dart';
+import '../features/admin/presentation/calendario_upload_page.dart';
+import '../features/admin/presentation/provas_upload_page.dart';
+import '../features/admin/presentation/admin_feedback_stats_page.dart';
+import '../features/events/presentation/events_page.dart';
 
 abstract class AppRoutes {
   static const INITIAL = '/';
@@ -34,6 +37,11 @@ abstract class AppRoutes {
   static const RESET_PASSWORD = '/reset-password';
   static const LOCATION_SEARCH = '/location-search';
   static const ADMIN_UPLOAD = '/admin-upload';
+  static const ADMIN_UPLOAD_HORARIO = '/admin-upload/horario';
+  static const ADMIN_UPLOAD_EVENTOS = '/admin-upload/eventos';
+  static const ADMIN_UPLOAD_CALENDARIO = '/admin-upload/calendario';
+  static const ADMIN_UPLOAD_PROVAS = '/admin-upload/provas';
+  static const ADMIN_FEEDBACK_STATS = '/admin-feedback-stats';
 
   static final pages = [
     GetPage(
@@ -90,8 +98,33 @@ abstract class AppRoutes {
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
+      name: EVENTS,
+      page: () => const EventsPage(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
       name: ADMIN_UPLOAD,
       page: () => const AdminUploadPage(),
+    ),
+    GetPage(
+      name: ADMIN_UPLOAD_HORARIO,
+      page: () => const HorarioUploadPage(),
+    ),
+    GetPage(
+      name: ADMIN_UPLOAD_EVENTOS,
+      page: () => const EventosUploadPage(),
+    ),
+    GetPage(
+      name: ADMIN_UPLOAD_CALENDARIO,
+      page: () => const CalendarioUploadPage(),
+    ),
+    GetPage(
+      name: ADMIN_UPLOAD_PROVAS,
+      page: () => const ProvasUploadPage(),
+    ),
+    GetPage(
+      name: ADMIN_FEEDBACK_STATS,
+      page: () => const AdminFeedbackStatsPage(),
     ),
     GetPage(
       name: FEEDBACK,

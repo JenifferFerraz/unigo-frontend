@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../routes/app_routes.dart';
+import '../../../data/services/feedback_service.dart';
+import '../../../data/services/auth_service.dart';
+import '../../home/presentation/components/sidebar.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});
@@ -13,6 +18,9 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
   int _currentStep = 0; // 0=parte 1, 1=parte 2, 2=parte 3, 3=parte 4
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
+  final FeedbackService _feedbackService = FeedbackService();
+  bool _isSubmitting = false;
+  
   String? _vinculo;
   bool? _jaUsouAppInterno;
   int? _q3;
@@ -30,6 +38,25 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
   final TextEditingController _q15Controller = TextEditingController();
   final TextEditingController _q16Controller = TextEditingController();
   final TextEditingController _q17Controller = TextEditingController();
+
+  String _sanitizeInput(String input) {
+    if (input.isEmpty) return input;
+    
+  
+    final dangerousPatterns = [
+      RegExp(r"('|(\\')|(;)|(\\;)|(--)|(/\*)|(\/\*)|(\*/)|(\*\/)|(xp_)|(sp_))", caseSensitive: false),
+      RegExp(r'\b(DROP|DELETE|INSERT|UPDATE|SELECT|UNION|EXEC|EXECUTE|SCRIPT|JAVASCRIPT|ALERT)\b', caseSensitive: false),
+    ];
+    
+    String sanitized = input;
+    for (var pattern in dangerousPatterns) {
+      sanitized = sanitized.replaceAll(pattern, '');
+    }
+    
+    sanitized = sanitized.replaceAll(RegExp(r'[<>{}]'), '');
+    
+    return sanitized.trim();
+  }
 
   @override
   void initState() {
@@ -210,10 +237,88 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
     );
   }
 
-  void _submitFeedback() {
-    // TODO: integrar com backend
-    Get.snackbar('Obrigado!', 'Feedback enviado com sucesso', snackPosition: SnackPosition.BOTTOM);
-    Get.back();
+  void _submitFeedback() async {
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      String deviceInfo = 'Unknown';
+      try {
+        if (kIsWeb) {
+          deviceInfo = 'Web';
+        } else {
+          if (Platform.isAndroid) {
+            deviceInfo = 'Android';
+          } else if (Platform.isIOS) {
+            deviceInfo = 'iOS';
+          } else if (Platform.isWindows) {
+            deviceInfo = 'Windows';
+          } else if (Platform.isMacOS) {
+            deviceInfo = 'MacOS';
+          } else if (Platform.isLinux) {
+            deviceInfo = 'Linux';
+          }
+        }
+      } catch (_) {}
+
+      final feedbackData = {
+        'vinculo': _vinculo,
+        'jaUsouAppInterno': _jaUsouAppInterno,
+        'identificarLocalizacao': _q3,
+        'instrucoesClaras': _q4,
+        'representacaoFiel': _q5,
+        'trajetoFacilSeguir': _q6,
+        'facilUsar': _q7,
+        'designClaro': _q8,
+        'interacaoSemDificuldade': _q9,
+        'tempoRazoavel': _q10,
+        'confiancaDestino': _q11,
+        'recomendaria': _q12,
+        'voltariaUsar': _q13,
+        'satisfacaoGeral': _q14,
+        'oQueAgradou': _q15Controller.text.isNotEmpty ? _sanitizeInput(_q15Controller.text) : null,
+        'dificuldadesEncontradas': _q16Controller.text.isNotEmpty ? _sanitizeInput(_q16Controller.text) : null,
+        'sugestoesMelhoria': _q17Controller.text.isNotEmpty ? _sanitizeInput(_q17Controller.text) : null,
+        'deviceInfo': deviceInfo,
+        'appVersion': '1.0.0',
+      };
+
+      final result = await _feedbackService.submitFeedback(feedbackData);
+
+      if (mounted) {
+        Get.snackbar(
+          '🎉 Obrigado!',
+          result['message'] ?? 'Feedback enviado com sucesso! Sua opinião é muito importante para nós.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green.shade100,
+          colorText: Colors.green.shade900,
+          duration: const Duration(seconds: 4),
+          icon: const Icon(Icons.check_circle, color: Colors.green),
+          margin: const EdgeInsets.all(16),
+        );
+        
+        // Redireciona para HOME (detectará automaticamente se é visitante)
+        Future.delayed(const Duration(seconds: 2), () {
+          Get.offAllNamed(AppRoutes.HOME);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        Get.snackbar(
+          'Erro',
+          'Não foi possível enviar o feedback. Tente novamente.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.shade100,
+          colorText: Colors.red.shade900,
+          duration: const Duration(seconds: 4),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   Widget _buildStepContentStep3() {
@@ -240,24 +345,48 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    // Verifica se é visitante
+    final authService = Get.find<AuthService>();
+    final isVisitor = authService.currentUser.value == null || 
+                      (Get.arguments != null && Get.arguments['visitor'] == true);
+    
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
+      drawer: isVisitor ? null : Sidebar(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF3C3CC0),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (_currentStep > 0) {
-              setState(() {
-                _currentStep -= 1;
-              });
-            } else {
-              // Voltar para a Home (/) quando estiver no primeiro step
-              Get.offAllNamed(AppRoutes.HOME);
-            }
-          },
-        ),
+        leading: isVisitor
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  if (_currentStep > 0) {
+                    setState(() {
+                      _currentStep -= 1;
+                    });
+                  } else {
+                    // Visitante: voltar para HOME
+                    Get.offAllNamed(AppRoutes.HOME);
+                  }
+                },
+              )
+            : (_currentStep > 0
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        _currentStep -= 1;
+                      });
+                    },
+                  )
+                : Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: () {
+                        Scaffold.of(context).openDrawer();
+                      },
+                    ),
+                  )),
         title: const Text(''),
       ),
       body: SafeArea(
@@ -414,33 +543,46 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 50), // Gap between legend and content
+                            const SizedBox(height: 50), 
                             _currentStep == 2
                                 ? _buildStepContentStep3()
                                 : _currentStep == 3
                                     ? _buildStepContentStep4()
                                     : _buildStepContent(),
-                            const SizedBox(height: 50), // Gap between content and button
+                            const SizedBox(height: 50), 
                             Center(
                               child: SizedBox(
                                 width: 220,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    if (_currentStep < 3) {
-                                      if (_canContinue) {
-                                        setState(() => _currentStep += 1);
-                                      }
-                                    } else {
-                                      _submitFeedback();
-                                    }
-                                  },
+                                  onPressed: _isSubmitting
+                                      ? null
+                                      : () {
+                                          if (_currentStep < 3) {
+                                            if (_canContinue) {
+                                              setState(() => _currentStep += 1);
+                                            }
+                                          } else {
+                                            _submitFeedback();
+                                          }
+                                        },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _canContinue ? const Color(0xFF3C3CC0) : const Color(0xFFD9D9D9),
+                                    backgroundColor: _canContinue && !_isSubmitting
+                                        ? const Color(0xFF3C3CC0)
+                                        : const Color(0xFFD9D9D9),
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                                     padding: const EdgeInsets.symmetric(vertical: 14),
                                   ),
-                                  child: Text(_currentStep == 3 ? 'ENVIAR' : 'PRÓXIMO'),
+                                  child: _isSubmitting
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(_currentStep == 3 ? 'ENVIAR' : 'PRÓXIMO'),
                                 ),
                               ),
                             ),

@@ -109,43 +109,7 @@ class TermsPage extends GetView<AuthService> {
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      top: BorderSide(color: Colors.grey, width: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            controller.logout();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Rejeitar'),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => _acceptTerms(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Aceitar'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // ...existing code...
               ],
             ),
           ),
@@ -174,44 +138,5 @@ class TermsPage extends GetView<AuthService> {
     );
   }
 
-  Future<void> _acceptTerms() async {
-    try {
-      final userData = await controller.storage.getUserData();
-      if (userData == null) {
-        Get.snackbar(
-          'Erro',
-          'Dados do usuário não encontrados',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return;
-      }
-
-      final token = userData['token'];
-      final userId = userData['id'];
-      
-      final response = await controller.dio.post(
-        '/auth/accept-terms',
-        data: { 'userId': userId },
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-
-      if (response.statusCode == 200) {  
-        userData['termsAccepted'] = true;
-        userData['requiresTermsAcceptance'] = false;
-        await controller.storage.saveUserData(userData);
-        
-        Get.offAllNamed(AppRoutes.HOME);
-      }
-    } catch (e) {
-      Get.snackbar(
-        'Erro',
-        'Ocorreu um erro ao aceitar os termos',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
-  }
+  // ...existing code...
 }

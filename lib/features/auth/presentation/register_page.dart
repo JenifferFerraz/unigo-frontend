@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import '../../../core/atoms/inputs/text_input.dart';
 import '../../../core/atoms/inputs/dropdown_input.dart';
 import '../../../core/atoms/buttons/primary_button.dart';
 import '../../../data/services/auth_service.dart';
-import '../../../data/services/upload_image_services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class RegisterPage extends GetView<AuthService> {  
+  bool _hasInjection(String value) {
+    final pattern = RegExp(r'select\s|insert\s|update\s|delete\s|<script>|<html>|<body>', caseSensitive: false);
+    return pattern.hasMatch(value);
+  }
   
   const RegisterPage({Key? key}) : super(key: key);
 
@@ -28,6 +29,7 @@ class RegisterPage extends GetView<AuthService> {
   final selectedShift = Rxn<String>();
   final selectedGender = Rxn<String>();
   final courses = controller.courses;
+  final termsAccepted = RxBool(false);
 
     final shifts = [
       'matutino',
@@ -124,6 +126,28 @@ class RegisterPage extends GetView<AuthService> {
                       label: 'Matrícula',
                     ),
                     const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Obx(() => Checkbox(
+                          value: termsAccepted.value,
+                          onChanged: (val) => termsAccepted.value = val ?? false,
+                          activeColor: AppColors.primary,
+                        )),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => Get.toNamed(AppRoutes.TERMS),
+                            child: const Text(
+                              'Li e aceito os Termos de Uso',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     PrimaryButton(
                       text: 'Cadastrar',
                       onPressed: () async {
@@ -134,10 +158,47 @@ class RegisterPage extends GetView<AuthService> {
                               studentIdController.text.isEmpty ||
                               selectedCourse.value == null ||
                               selectedShift.value == null ||
-                              selectedGender.value == null) {
+                              !termsAccepted.value) {
+                            print('[REGISTER ERROR] Campos obrigatórios faltando:');
+                            print('name: ${nameController.text}');
+                            print('email: ${emailController.text}');
+                            print('password: ${passwordController.text}');
+                            print('studentId: ${studentIdController.text}');
+                            print('selectedCourse: ${selectedCourse.value}');
+                            print('selectedShift: ${selectedShift.value}');
+                            print('termsAccepted: ${termsAccepted.value}');
                             Get.snackbar(
                               'Campos Incompletos',
-                              'Por favor, preencha todos os campos obrigatórios',
+                              'Por favor, preencha todos os campos obrigatórios e aceite os Termos de Uso',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.orange[100],
+                              colorText: Colors.orange[900],
+                              duration: const Duration(seconds: 4),
+                            );
+                            return;
+                          }
+                          if (_hasInjection(nameController.text) ||
+                              _hasInjection(emailController.text) ||
+                              _hasInjection(passwordController.text)) {
+                            print('[REGISTER ERROR] SQL/HTML injection detectado');
+                            print('name: ${nameController.text}');
+                            print('email: ${emailController.text}');
+                            print('password: ${passwordController.text}');
+                            Get.snackbar(
+                              'Valor inválido',
+                              'Os campos não podem conter comandos SQL ou HTML.',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.red[100],
+                              colorText: Colors.red[900],
+                              duration: const Duration(seconds: 4),
+                            );
+                            return;
+                          }
+                          if (passwordController.text.length < 6) {
+                            print('[REGISTER ERROR] Senha muito curta: ${passwordController.text.length} caracteres');
+                            Get.snackbar(
+                              'Senha muito curta',
+                              'A senha deve ter pelo menos 6 caracteres.',
                               snackPosition: SnackPosition.BOTTOM,
                               backgroundColor: Colors.orange[100],
                               colorText: Colors.orange[900],
@@ -151,7 +212,7 @@ class RegisterPage extends GetView<AuthService> {
                             'shift': selectedShift.value,
                             'gender': selectedGender.value,
                           };
-                          Get.dialog(
+                          Get.dialog( 
                             Center(
                               child: Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -216,8 +277,9 @@ class RegisterPage extends GetView<AuthService> {
                             password: passwordController.text,
                             role: 'student',
                             studentProfile: studentProfile,
+                            termsAccepted: true,
                           );
-                          Get.back();
+                          if (Get.isDialogOpen ?? false) Get.back();
                           if (success) {
                             Get.snackbar(
                               'Conta Criada!',
@@ -235,12 +297,21 @@ class RegisterPage extends GetView<AuthService> {
                             selectedShift.value = null;
                             selectedGender.value = null;
                             await Future.delayed(const Duration(seconds: 2));
-                            Get.until((route) => route.settings.name == AppRoutes.LOGIN);
+                            Get.offAllNamed(AppRoutes.LOGIN);
                           } else {
-                            throw 'Não foi possível criar sua conta';
+                            print('[REGISTER ERROR] controller.register retornou false');
+                            Get.snackbar(
+                              'Erro no Cadastro',
+                              'Ocorreu um erro ao criar sua conta. Tente novamente.',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.red[100],
+                              colorText: Colors.red[900],
+                              duration: const Duration(seconds: 5),
+                            );
                           }
                         } catch (e) {
-                          Get.back();
+                          print('[REGISTER ERROR] Exception: $e');
+                          if (Get.isDialogOpen ?? false) Get.back();
                           Get.snackbar(
                             'Erro no Cadastro',
                             'Ocorreu um erro ao criar sua conta. Tente novamente.',

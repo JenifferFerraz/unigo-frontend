@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../core/atoms/loading_screen.dart';
 
 class Sidebar extends StatelessWidget {
   Widget _buildMenuItem({required IconData icon, required String title, required VoidCallback onTap}) {
@@ -65,7 +66,7 @@ class Sidebar extends StatelessWidget {
                 title: 'Eventos',
                 onTap: () {
                   Get.back();
-                  // Navegação futura
+                  Get.toNamed(AppRoutes.EVENTS);
                 },
               ),
               const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
@@ -86,6 +87,15 @@ class Sidebar extends StatelessWidget {
                   Get.toNamed(AppRoutes.EXAMS);
                 },
               ),
+              const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
+              _buildMenuItem(
+                icon: Icons.feedback,
+                title: 'Feedback',
+                onTap: () {
+                  Get.back();
+                  Get.toNamed(AppRoutes.FEEDBACK);
+                },
+              ),
               if (_authService.currentUser.value?.role == 'admin') ...[
                 const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),
                 _buildMenuItem(
@@ -101,8 +111,14 @@ class Sidebar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    _authService.logout();
+                  onPressed: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const LoadingScreen(message: 'Saindo...'),
+                    );
+                    await _authService.logout();
+                    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
                     Get.offAllNamed(AppRoutes.LOGIN);
                   },
                   icon: const Icon(Icons.logout),

@@ -24,10 +24,24 @@ class _SplashPageState extends State<SplashPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
       body: Center(
-        child: Image.asset(
-          'assets/images/Logo.png',
-          width: 200,
-          height: 200,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.7, end: 1.1),
+          duration: const Duration(milliseconds: 1200),
+          curve: Curves.easeInOut,
+          builder: (context, scale, child) {
+            return Opacity(
+              opacity: scale.clamp(0.7, 1.0),
+              child: Transform.scale(
+                scale: scale,
+                child: child,
+              ),
+            );
+          },
+          child: Image.asset(
+            'assets/images/Logo.png',
+            width: 200,
+            height: 200,
+          ),
         ),
       ),
     );
