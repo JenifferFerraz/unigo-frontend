@@ -10,13 +10,15 @@ class NavigationRoute {
   }
   final List<NavigationStep> steps;
   final double totalDistance; 
-  final int estimatedDuration; 
+  final int estimatedDuration;
+  final int? destination; // ID da sala/estrutura de destino
 
   NavigationRoute({
     required this.steps,
     required this.totalDistance,
     required this.estimatedDuration,
     this.path,
+    this.destination,
   });
 
   factory NavigationRoute.fromJson(Map<String, dynamic> json) {
@@ -24,6 +26,7 @@ class NavigationRoute {
       steps: (json['steps'] as List).map((step) => NavigationStep.fromJson(step)).toList(),
       totalDistance: json['totalDistance'],
       estimatedDuration: json['estimatedDuration'],
+      destination: json['destination'],
     );
   }
 }

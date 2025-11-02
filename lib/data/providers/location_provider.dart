@@ -15,15 +15,10 @@ class LocationProvider {
 
   Future<List<Structure>> searchStructures(String query) async {
     try {
-      final storageService = Get.find<StorageService>();
-      final token = storageService.token.value;
-      if (token == null) {
-        throw 'No authentication token found';
-      }
+      // Busca de estruturas é pública, não requer autenticação (visitantes podem usar)
       final response = await _dio.get(
         '/room/all',
         queryParameters: {'search': query},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       if (response.statusCode == 200) {
         return (response.data as List)

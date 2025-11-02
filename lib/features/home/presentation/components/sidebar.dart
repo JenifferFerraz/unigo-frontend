@@ -64,16 +64,9 @@ class Sidebar extends StatelessWidget {
               _buildMenuItem(
                 icon: Icons.event_note,
                 title: 'Eventos',
-                onTap: () async {
+                onTap: () {
                   Get.back();
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (context) => const LoadingScreen(message: 'Carregando eventos...'),
-                  );
-                  await Future.delayed(const Duration(milliseconds: 1500));
-                  if (Navigator.of(context).canPop()) Navigator.of(context).pop();
-                  // Navegação futura
+                  Get.toNamed(AppRoutes.EVENTS);
                 },
               ),
               const Divider(color: Colors.white24, thickness: 1, indent: 16, endIndent: 16),

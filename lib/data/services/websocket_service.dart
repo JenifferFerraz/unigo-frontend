@@ -58,18 +58,22 @@ class WebSocketService extends GetxService {
   void _handleMessage(dynamic message) {
     final data = jsonDecode(message);
     
-    // Verifica se LocationService está registrado antes de usar
     if (!Get.isRegistered<LocationService>()) {
       return;
     }
     
     final locationService = Get.find<LocationService>();
+    final isNavigating = locationService.isNavigating.value;
+    
     if (data['type'] == 'roomsOnFloor') {
-      if (data['rooms'] is List) {
+      if (!isNavigating && data['rooms'] is List) {
         locationService.roomsOnFloor.assignAll(List<Map<String, dynamic>>.from(data['rooms']));
+      } else if (isNavigating) {
       }
     } else if (data['type'] == 'nearestStructure') {
-      locationService.nearestStructure.value = data['structure'];
+      if (!isNavigating) {
+        locationService.nearestStructure.value = data['structure'];
+      } 
     }
   }
 

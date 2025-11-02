@@ -9,10 +9,7 @@ import '../data/middleware/auth_middleware.dart';
 import '../features/splash/presentation/splash_page.dart';
 import '../features/schedule/presentation/schedule_page.dart';
 import '../features/calendar/presentation/calendar_page.dart';
-// import '../features/locations/presentation/location_search_page.dart';
-// import '../features/locations/presentation/class_notifications_page.dart';
 import '../features/feedback/presentation/feedback_page.dart';
-// import '../features/locations/location_binding.dart';
 import '../features/exams/presentation/exams_page.dart';
 import '../features/auth/presentation/access_selection_page.dart';
 import '../features/admin/presentation/admin_upload_page.dart';
@@ -21,6 +18,7 @@ import '../features/admin/presentation/eventos_upload_page.dart';
 import '../features/admin/presentation/calendario_upload_page.dart';
 import '../features/admin/presentation/provas_upload_page.dart';
 import '../features/admin/presentation/admin_feedback_stats_page.dart';
+import '../features/events/presentation/events_page.dart';
 
 abstract class AppRoutes {
   static const INITIAL = '/';
@@ -97,6 +95,11 @@ abstract class AppRoutes {
     GetPage(
       name: EXAMS,
       page: () => ExamsPage(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: EVENTS,
+      page: () => const EventsPage(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

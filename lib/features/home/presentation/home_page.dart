@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/atoms/map/map_widget.dart';
 import '../../../core/atoms/loading_screen.dart';
 import '../../../data/services/location_service.dart';
@@ -9,6 +10,7 @@ import './components/sidebar.dart';
 import './components/location_search.dart';
 import './components/feedback_tab.dart';
 import '../../../data/services/websocket_service.dart';
+import '../../../data/models/navigation_model.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -20,72 +22,80 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final locationService = Get.isRegistered<LocationService>() ? Get.find<LocationService>() : null;
-    if (locationService != null) {
-      ever(locationService.nearestStructure, (nearest) async {
-        if (nearest != null && nearest['floors'] != null && nearest['floors'] is List && (nearest['floors'] as List).isNotEmpty) {
-          final floors = List<int>.from(nearest['floors']);
-          // Se só tem um andar, seleciona automaticamente
-          if (floors.length == 1) {
-            setState(() {
-              _selectedLayer = floors[0];
-            });
-            // Envia para o websocket (fluxo já implementado no LocationService)
+  bool _showLocationSearch = false;
+  
+  // Método para abrir dialog de seleção de andar manualmente
+  Future<void> _showFloorSelectionDialog() async {
+    final locationService = Get.find<LocationService>();
+    final nearest = locationService.nearestStructure.value;
+    
+    if (nearest == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Você não está próximo de nenhuma estrutura')),
+      );
+      return;
+    }
+    
+    if (nearest['floors'] == null || nearest['floors'] is! List || (nearest['floors'] as List).isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Estrutura sem andares disponíveis')),
+      );
+      return;
+    }
+    
+    final floors = List<int>.from(nearest['floors']);
+    
+    if (floors.length == 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Esta estrutura tem apenas o andar ${floors[0]}')),
+      );
+      return;
+    }
+    
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Escolha o andar'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: floors.map((f) => ListTile(
+              title: Text('Andar $f'),
+              onTap: () => Navigator.of(context).pop(f),
+            )).toList(),
+          ),
+        );
+      },
+    );
+    
+    if (selected != null) {
+      final pos = locationService.currentPosition.value;
+      if (pos != null) {
+        try {
+          WebSocketService ws;
+          if (!Get.isRegistered<WebSocketService>()) {
+            ws = Get.put(WebSocketService());
+            await ws.connect();
           } else {
-            // Exibe dialog para o usuário escolher o andar
-            final selected = await showDialog<int>(
-              context: context,
-              builder: (context) {
-                return AlertDialog(
-                  title: const Text('Escolha o andar'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: floors.map((f) => ListTile(
-                      title: Text(_layerNames.length > f ? _layerNames[f] : 'Andar $f'),
-                      onTap: () => Navigator.of(context).pop(f),
-                    )).toList(),
-                  ),
-                );
-              },
-            );
-            if (selected != null) {
-              setState(() {
-                _selectedLayer = selected;
-              });
-              // Envia para o websocket com o andar escolhido
-              final pos = locationService.currentPosition.value;
-              if (pos != null) {
-                try {
-                  WebSocketService ws;
-                  if (!Get.isRegistered<WebSocketService>()) {
-                    ws = Get.put(WebSocketService());
-                    await ws.connect();
-                  } else {
-                    ws = Get.find<WebSocketService>();
-                    if (!ws.isConnected.value) {
-                      await ws.connect();
-                    }
-                  }
-                  if (ws.isConnected.value) {
-                    ws.sendPosition(
-                      position: [pos.longitude, pos.latitude],
-                      structureId: nearest['id'],
-                      floor: selected,
-                    );
-                  }
-                } catch (e) {
-                  print('[HomePage] Erro ao enviar posição para WebSocket após escolha de andar: $e');
-                }
-              }
+            ws = Get.find<WebSocketService>();
+            if (!ws.isConnected.value) {
+              await ws.connect();
             }
           }
+          if (ws.isConnected.value) {
+            ws.sendPosition(
+              position: [pos.longitude, pos.latitude],
+              structureId: nearest['id'],
+              floor: selected,
+            );
+          }
+        } catch (e) {
+          print('[HomePage] Erro ao enviar posição para WebSocket: $e');
         }
-      });
+      }
     }
   }
+  
   @override
   void initState() {
     super.initState();
@@ -102,20 +112,6 @@ class _HomePageState extends State<HomePage> {
       } catch (e) {
         print('[HomePage] Erro ao conectar WebSocketService: $e');
       }
-    });
-  }
-  int _selectedLayer = 0;
-  final List<String> _layerNames = [
-    '1º Andar',
-    '2º Andar',
-    '3º Andar',
-  ];
-
-  bool _showLocationSearch = false;
-
-  void _toggleLayer() {
-    setState(() {
-      _selectedLayer = (_selectedLayer + 1) % _layerNames.length;
     });
   }
 
@@ -160,19 +156,15 @@ class _HomePageState extends State<HomePage> {
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () async {
                   // Limpa dados do visitante antes de sair
-                  print('[HomePage] Visitante saindo, limpando dados...');
-                  
                   if (Get.isRegistered<LocationService>()) {
                     final locationService = Get.find<LocationService>();
                     locationService.clearAllData();
-                    print('[HomePage] ✓ LocationService limpo');
                   }
                   
                   if (Get.isRegistered<WebSocketService>()) {
                     final wsService = Get.find<WebSocketService>();
                     await wsService.disconnect();
                     await wsService.clearSessionId();
-                    print('[HomePage] ✓ WebSocket desconectado');
                   }
                   
                   Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
@@ -204,7 +196,6 @@ class _HomePageState extends State<HomePage> {
             child: MapWidget(
               zoom: 15.0,
               showUserLocation: true,
-              selectedLayer: _selectedLayer,
             ),
           ),
           if (_showLocationSearch)
@@ -301,7 +292,6 @@ class _HomePageState extends State<HomePage> {
                               }
                             }
                           } catch (e) {
-                            // Erro ao obter localização
                             if (mounted && Navigator.of(context).canPop()) {
                               Navigator.of(context).pop();
                             }
@@ -327,7 +317,6 @@ class _HomePageState extends State<HomePage> {
             return const SizedBox.shrink();
           }),
 
-          // Aba lateral de Feedback para visitantes
           if (isVisitor) const FeedbackTab(),
         ],
       ),
@@ -335,6 +324,170 @@ class _HomePageState extends State<HomePage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          Obx(() {
+            final isNavigating = controller?.isNavigating.value ?? false;
+            final nearest = controller?.nearestStructure.value;
+            final multiFloor = controller?.multiFloorStage.value != null && controller!.multiFloorStage.value != MultiFloorNavigationStage.none;
+            final floors = (nearest != null && nearest['floors'] != null) ? List<int>.from(nearest['floors']) : <int>[];
+            
+            if (!isNavigating) return const SizedBox.shrink();
+
+            return Column(
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: "btnStopNav",
+                  onPressed: () {
+                    controller?.stopNavigation();
+                    Get.snackbar(
+                      'Navegação Cancelada',
+                      'A rota foi removida',
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: Colors.red[400],
+                      colorText: Colors.white,
+                      icon: const Icon(Icons.cancel, color: Colors.white),
+                      duration: const Duration(seconds: 2),
+                    );
+                  },
+                  backgroundColor: Colors.red[400],
+                  label: const Text(
+                    'Parar',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+                const SizedBox(height: 12),
+
+                if (floors.length > 1)
+                  FloatingActionButton.extended(
+                    heroTag: "btnChooseFloor",
+                    onPressed: () async {
+                      final selected = await showDialog<int>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text('Escolha o andar para navegação'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: floors.map((f) => ListTile(
+                                title: Text('Andar $f'),
+                                onTap: () => Navigator.of(context).pop(f),
+                              )).toList(),
+                            ),
+                          );
+                        },
+                      );
+                      if (selected != null) {
+                        final pos = controller?.currentPosition.value;
+                        if (pos != null && nearest != null) {
+                          try {
+                            final locService = controller;
+                            if (locService != null) {
+                              final selectedFloorPath = locService.getPathForFloor(selected);
+                              
+                              // Mostrar a rota do andar
+                              if (selectedFloorPath != null && selectedFloorPath.isNotEmpty) {
+                                
+                                double totalDistance = 0.0;
+                                for (int i = 1; i < selectedFloorPath.length; i++) {
+                                  totalDistance += Distance().as(
+                                    LengthUnit.Meter, 
+                                    selectedFloorPath[i - 1], 
+                                    selectedFloorPath[i]
+                                  );
+                                }
+                                
+                                // Atualizar rota exibida (mantendo o destination)
+                                final currentDestination = locService.activeRoute.value?.destination;
+                                locService.activeRoute.value = NavigationRoute(
+                                  steps: [],
+                                  totalDistance: totalDistance,
+                                  estimatedDuration: (totalDistance / 1.4).toInt(),
+                                  path: selectedFloorPath,
+                                  destination: currentDestination,
+                                );
+                                
+                                // Atualizar rooms do andar selecionado
+                                final nearestStruct = locService.nearestStructure.value;
+                                if (nearestStruct != null && nearestStruct['roomsByFloor'] != null) {
+                                  final roomsByFloor = nearestStruct['roomsByFloor'] as Map<String, dynamic>;
+                                  final floorKey = selected.toString();
+                                  
+                                  if (roomsByFloor.containsKey(floorKey) && roomsByFloor[floorKey] is List) {
+                                    locService.roomsOnFloor.assignAll(List<Map<String, dynamic>>.from(roomsByFloor[floorKey]));
+                                  }
+                                }
+                                
+                                // Manter estágio de navegação multi-andar ativo
+                                if (locService.multiFloorStage.value == MultiFloorNavigationStage.none) {
+                                  locService.multiFloorStage.value = MultiFloorNavigationStage.toStairs;
+                                }
+                              } else {
+                                // FALLBACK: Se floorPaths não estiver disponível, usa lógica antiga
+                                if (selected == locService.destinationFloor && locService.pathFromStairs.isNotEmpty) {
+                                  locService.activeRoute.value = NavigationRoute(
+                                    steps: [],
+                                    totalDistance: 0,
+                                    estimatedDuration: 0,
+                                    path: locService.pathFromStairs,
+                                  );
+                                } else if (locService.pathToStairs.isNotEmpty) {
+                                  locService.activeRoute.value = NavigationRoute(
+                                    steps: [],
+                                    totalDistance: 0,
+                                    estimatedDuration: 0,
+                                    path: locService.pathToStairs,
+                                  );
+                                }
+                              }
+                            }
+                          } catch (e) {
+                            print('[HomePage] Erro ao enviar posição para WebSocket ou atualizar rota: $e');
+                          }
+                        }
+                      }
+                    },
+                    backgroundColor: Colors.blue[400],
+                    label: const Text(
+                      'Mudar Andar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    icon: const Icon(Icons.layers, color: Colors.white),
+                  ),
+                if (floors.length > 1)
+                  const SizedBox(height: 12),
+              ],
+            );
+          }),
+          Obx(() {
+            final isNavigating = controller?.isNavigating.value ?? false;
+            final nearest = controller?.nearestStructure.value;
+            
+            // Mostrar botão sempre que houver estrutura próxima e NÃO estiver navegando
+            if (isNavigating || nearest == null) return const SizedBox.shrink();
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FloatingActionButton.extended(
+                heroTag: "btnSelectFloor",
+                onPressed: _showFloorSelectionDialog,
+                backgroundColor: Colors.orange[700],
+                label: const Text(
+                  'Selecionar Andar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                icon: const Icon(Icons.layers, color: Colors.white),
+              ),
+            );
+          }),
           FloatingActionButton(
             heroTag: "btnSearch",
             onPressed: () {
@@ -344,19 +497,6 @@ class _HomePageState extends State<HomePage> {
             },
             backgroundColor: Colors.white,
             child: const Icon(Icons.search, color: Color(0xFF3C3CC0)),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: "btnLayer",
-            onPressed: _toggleLayer,
-            backgroundColor: Colors.white,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.layers, color: Colors.blue),
-                Text(_layerNames[_selectedLayer], style: TextStyle(fontSize: 10, color: Colors.blue)),
-              ],
-            ),
           ),
         ],
       ),

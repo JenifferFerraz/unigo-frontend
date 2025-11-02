@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
+import 'dart:ui' as ui;
 import '../../../data/services/location_service.dart';
 import 'animated_user_marker.dart';
+import 'animated_route_layer.dart';
 
 class MapWidget extends StatefulWidget {
   static LatLng? _selectedDestination;
   final double zoom;
   final bool showUserLocation;
-  final int selectedLayer;
 
   const MapWidget({
     Key? key,
     this.zoom = 13.0,
     this.showUserLocation = true,
-    this.selectedLayer = 0,
   }) : super(key: key);
 
   @override
@@ -63,26 +63,82 @@ class _MapWidgetState extends State<MapWidget> {
             for (final room in rooms) {
               final geometry = room['geometry'];
               final centroid = room['centroid'];
-              if (geometry['type'] == 'Polygon') {
+              final roomName = room['name'] ?? '';
+              final currentActiveRoute = locationService.activeRoute.value;
+              final isDestination = currentActiveRoute?.destination != null && 
+                                    room['id'] == currentActiveRoute?.destination;
+              
+              // Debug para verificar se está identificando a room de destino
+              if (currentActiveRoute?.destination != null && room['id'] == currentActiveRoute?.destination) {
+                print('[MapWidget] 🎯 Room de destino encontrada: ${room['name']} (ID: ${room['id']})');
+              }
+              
+              if (geometry != null && geometry is Map && geometry['type'] == 'Polygon' && geometry['coordinates'] != null) {
                 for (var ring in geometry['coordinates']) {
                   final points = ring.map<LatLng>((c) => LatLng(c[1], c[0])).toList();
                   polygons.add(
                     Polygon(
                       points: points,
-                      color: const Color(0xFFededed),
-                      borderColor: const Color(0xFFAAB9C9),
-                      borderStrokeWidth: 1.2,
+                      color: isDestination 
+                          ? const Color(0xFF3C3CC0).withOpacity(0.4)
+                          : const Color(0xFFededed),
+                      borderColor: isDestination
+                          ? const Color(0xFF3C3CC0)
+                          : const Color(0xFFAAB9C9),
+                      borderStrokeWidth: isDestination ? 4.0 : 1.2,
+                      isFilled: true,
                     ),
                   );
                 }
               }
-              if (centroid != null && centroid['type'] == 'Point') {
+              
+              // Adicionar marcador de destino se for a room de destino
+              if (isDestination && centroid != null && centroid is Map && centroid['type'] == 'Point' && centroid['coordinates'] != null) {
                 markers.add(
                   Marker(
                     point: LatLng(centroid['coordinates'][1], centroid['coordinates'][0]),
-                    width: 40,
-                    height: 40,
-                    child: Icon(Icons.location_on, color: const Color(0xFFAAB9C9), size: 30),
+                    width: 50,
+                    height: 50,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3C3CC0),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF3C3CC0).withOpacity(0.5),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.flag,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              
+              // Adicionar nome da room (apenas texto, sem fundo)
+              if (centroid != null && centroid is Map && centroid['type'] == 'Point' && centroid['coordinates'] != null && roomName.isNotEmpty) {
+                markers.add(
+                  Marker(
+                    point: LatLng(centroid['coordinates'][1], centroid['coordinates'][0]),
+                    width: 80,
+                    height: 16,
+                    child: Text(
+                      roomName,
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w600,
+                        color: isDestination ? const Color(0xFF3C3CC0) : Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 );
               }
@@ -106,6 +162,8 @@ class _MapWidgetState extends State<MapWidget> {
             }
 
             final List<Polyline> allPolylines = [];
+            List<LatLng> uniqueRoutePoints = [];
+            
             if (activeRoute != null) {
               List<LatLng> routePoints = [];
               if (activeRoute.steps.isNotEmpty) {
@@ -115,25 +173,41 @@ class _MapWidgetState extends State<MapWidget> {
               } else if (activeRoute.path != null && activeRoute.path!.isNotEmpty) {
                 routePoints = activeRoute.path!;
               }
-              final List<LatLng> uniqueRoutePoints = [];
+              
               for (final pt in routePoints) {
                 if (pt != null && (uniqueRoutePoints.isEmpty || uniqueRoutePoints.last != pt)) {
                   uniqueRoutePoints.add(pt);
                 }
               }
-              if (uniqueRoutePoints.isNotEmpty) {
-                allPolylines.add(
-                  Polyline(
-                    points: uniqueRoutePoints,
-                    color: Colors.blue, // cor sólida
-                    strokeWidth: 8.0,
-                    borderStrokeWidth: 0.0, // sem fundo
-                    borderColor: Colors.transparent, // sem fundo
-                    isDotted: false,
-                    strokeCap: StrokeCap.round,
+            }
+            
+            // Marcador para rotas com ponto único (ex: escada em andar intermediário)
+            if (uniqueRoutePoints.length == 1) {
+              markers.add(
+                Marker(
+                  point: uniqueRoutePoints[0],
+                  width: 60,
+                  height: 60,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3C3CC0),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF3C3CC0).withOpacity(0.5),
+                          blurRadius: 15,
+                          spreadRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.stairs,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
-                );
-              }
+                ),
+              );
             }
 
             return FlutterMap(
@@ -142,9 +216,7 @@ class _MapWidgetState extends State<MapWidget> {
                 center: center,
                 zoom: widget.zoom,
                 maxZoom: 22,
-                // Removido onTap e onDoubleTap para desabilitar seleção de destino
-                // onTap: null,
-                // onDoubleTap: null,
+          
               ),
               children: [
                 TileLayer(
@@ -153,7 +225,11 @@ class _MapWidgetState extends State<MapWidget> {
                   userAgentPackageName: 'com.example.app',
                 ),
                 PolygonLayer(polygons: polygons),
-                PolylineLayer(polylines: allPolylines),
+                
+                // Rota de navegação animada
+                if (uniqueRoutePoints.length > 1)
+                  AnimatedRouteLayer(routePoints: uniqueRoutePoints),
+                
                 MarkerLayer(markers: [
                   ...markers,
                   if (widget.showUserLocation && position != null)
@@ -186,4 +262,4 @@ class _MapWidgetState extends State<MapWidget> {
       ],
     );
   }
-  }
+}
