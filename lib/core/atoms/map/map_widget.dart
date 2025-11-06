@@ -2,23 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
-import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
+import 'dart:ui' as ui;
 import '../../../data/services/location_service.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'animated_user_marker.dart';
+import 'animated_route_layer.dart';
 
 class MapWidget extends StatefulWidget {
-  // Estado para destino selecionado
   static LatLng? _selectedDestination;
   final double zoom;
   final bool showUserLocation;
-  final int selectedLayer;
 
   const MapWidget({
     Key? key,
     this.zoom = 13.0,
     this.showUserLocation = true,
-    this.selectedLayer = 0,
   }) : super(key: key);
 
   @override
@@ -30,214 +27,239 @@ class _MapWidgetState extends State<MapWidget> {
   LocationService get locationService => Get.find<LocationService>();
   final MapController _mapController = MapController();
   bool _hasCenteredOnce = false;
-  Future<Map<String, dynamic>> loadGeoJson(String file) async {
-    final geojsonStr = await rootBundle.loadString(file);
-    return json.decode(geojsonStr);
-  }
 
   @override
   void dispose() {
-    // nothing to dispose on controller, but keep for future
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final geojsonFiles = [
-      'assets/geojson/Bloco-H-1-Andar.geojson',
-      'assets/geojson/Bloco-H-2-Andar.geojson',
-      'assets/geojson/Bloco-H-3-Andar.geojson',
-    ];
-
     return Column(
       children: [
         Expanded(
-          child: FutureBuilder<List<Map<String, dynamic>>>(
-            future: Future.wait(geojsonFiles.map(loadGeoJson)),
-            builder: (context, snapshot) {
-              final geojsons = snapshot.data ?? [];
-              final colors = [Colors.red, Colors.green, Colors.blue];
+          child: Obx(() {
+            final rooms = locationService.roomsOnFloor;
+            final List<Polygon> polygons = [];
+            final List<Marker> markers = [];
 
-              final int i = widget.selectedLayer % geojsons.length;
-              final geojson = geojsons.isNotEmpty ? geojsons[i] : null;
-              final color = colors[i % colors.length];
-              final List<Marker> markers = [];
-              final List<Polygon> polygons = [];
-              final List<Polyline> polylines = [];
+            final nearest = locationService.nearestStructure.value;
+            if (nearest != null && nearest['geometry'] != null && nearest['geometry']['type'] == 'Polygon') {
+              for (var ring in nearest['geometry']['coordinates']) {
+                final points = ring.map<LatLng>((c) => LatLng(c[1], c[0])).toList();
+                polygons.add(
+                  Polygon(
+                    points: points,
+                    color: const Color(0xFFededed),
+                    borderColor: const Color(0xFFAAB9C9),
+                    borderStrokeWidth: 4,
+                     isFilled: true,
+                  ),
+                );
+              }
+            }
 
-              if (geojson != null) {
-                for (var feature in geojson['features']) {
-                  final type = feature['geometry']['type'];
-                  final coords = feature['geometry']['coordinates'];
-                  final props = feature['properties'] ?? {};
-                  final pinName = props['name'] ?? '';
-                  if (type == 'Point') {
-                    markers.add(
-                      Marker(
-                        point: LatLng(coords[1], coords[0]),
-                        width: 40,
-                        height: 40,
-                        child: GestureDetector(
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text('Local'),
-                                content: Text(pinName),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.of(ctx).pop(),
-                                    child: Text('Fechar'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          child: Icon(Icons.location_on, color: color, size: 30),
-                        ),
-                      ),
-                    );
-                  } else if (type == 'Polygon') {
-                    for (var ring in coords) {
-                      final points = ring.map<LatLng>((c) => LatLng(c[1], c[0])).toList();
-                      polygons.add(
-                        Polygon(
-                          points: points,
-                          color: color.withOpacity(0.3),
-                          borderColor: color,
-                          borderStrokeWidth: 2,
-                        ),
-                      );
-                    }
-                  } else if (type == 'MultiPolygon') {
-                    for (var poly in coords) {
-                      for (var ring in poly) {
-                        final points = ring.map<LatLng>((c) => LatLng(c[1], c[0])).toList();
-                        polygons.add(
-                          Polygon(
-                            points: points,
-                            color: color.withOpacity(0.3),
-                            borderColor: color,
-                            borderStrokeWidth: 2,
-                          ),
-                        );
-                      }
-                    }
-                  } else if (type == 'LineString') {
-                    final points = coords.map<LatLng>((c) => LatLng(c[1], c[0])).toList();
-                    polylines.add(
-                      Polyline(
-                        points: points,
-                        color: color,
-                        strokeWidth: 3,
-                      ),
-                    );
-                  } else if (type == 'MultiLineString') {
-                    for (var line in coords) {
-                      final points = line.map<LatLng>((c) => LatLng(c[1], c[0])).toList();
-                      polylines.add(
-                        Polyline(
-                          points: points,
-                          color: color,
-                          strokeWidth: 3,
-                        ),
-                      );
-                    }
-                  }
+ 
+            for (final room in rooms) {
+              final geometry = room['geometry'];
+              final centroid = room['centroid'];
+              final roomName = room['name'] ?? '';
+              final currentActiveRoute = locationService.activeRoute.value;
+              final isDestination = currentActiveRoute?.destination != null && 
+                                    room['id'] == currentActiveRoute?.destination;
+              
+              // Debug para verificar se está identificando a room de destino
+              if (currentActiveRoute?.destination != null && room['id'] == currentActiveRoute?.destination) {
+                print('[MapWidget] 🎯 Room de destino encontrada: ${room['name']} (ID: ${room['id']})');
+              }
+              
+              if (geometry != null && geometry is Map && geometry['type'] == 'Polygon' && geometry['coordinates'] != null) {
+                for (var ring in geometry['coordinates']) {
+                  final points = ring.map<LatLng>((c) => LatLng(c[1], c[0])).toList();
+                  polygons.add(
+                    Polygon(
+                      points: points,
+                      color: isDestination 
+                          ? const Color(0xFF3C3CC0).withOpacity(0.4)
+                          : const Color(0xFFededed),
+                      borderColor: isDestination
+                          ? const Color(0xFF3C3CC0)
+                          : const Color(0xFFAAB9C9),
+                      borderStrokeWidth: isDestination ? 4.0 : 1.2,
+                      isFilled: true,
+                    ),
+                  );
                 }
               }
-
-              return Obx(() {
-                final position = locationService.currentPosition.value;
-                print('[MapWidget] currentPosition: $position');
-                final center = position != null
-                    ? LatLng(position.latitude, position.longitude)
-                    : LatLng(-16.294387, -48.944379);
-                print('[MapWidget] center usado no mapa: $center');
-
-                // If we have the user's position and haven't centered yet, move the map controller
-                if (position != null && !_hasCenteredOnce) {
-                  // Schedule movement after current frame to ensure map controller is ready
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    try {
-                      _mapController.move(center, widget.zoom);
-                    } catch (e) {
-                      print('[MapWidget] erro ao mover o mapa (postFrame): $e');
-                    }
-                  });
-                  _hasCenteredOnce = true;
-                }
-
-                return FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    center: center,
-                    zoom: widget.zoom,
-                    maxZoom: 22,
-                      onTap: (tapPos, latlng) {
-                      MapWidget._selectedDestination = latlng;
-                      // Força rebuild
-                      (context as Element).markNeedsBuild();
-                    },
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-                      subdomains: ['a', 'b', 'c'],
-                      userAgentPackageName: 'com.example.app',
-                    ),
-                    PolygonLayer(polygons: polygons),
-                    PolylineLayer(polylines: polylines),
-                    MarkerLayer(markers: [
-                      ...markers,
-                      if (widget.showUserLocation && position != null)
-                        Marker(
-                          point: center,
-                          width: 40,
-                          height: 40,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.3),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.blue, width: 4),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
+              
+              // Adicionar marcador de destino se for a room de destino
+              if (isDestination && centroid != null && centroid is Map && centroid['type'] == 'Point' && centroid['coordinates'] != null) {
+                markers.add(
+                  Marker(
+                    point: LatLng(centroid['coordinates'][1], centroid['coordinates'][0]),
+                    width: 50,
+                    height: 50,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3C3CC0),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF3C3CC0).withOpacity(0.5),
+                            blurRadius: 10,
+                            spreadRadius: 2,
                           ),
-                        ),
-                      if (MapWidget._selectedDestination != null)
-                        Marker(
-                          point: MapWidget._selectedDestination!,
-                          width: 40,
-                          height: 40,
-                          child: Icon(Icons.location_on, color: Colors.red, size: 40),
-                        ),
-                    ]),
-                  ],
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.flag,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
                 );
+              }
+              
+              // Adicionar nome da room (apenas texto, sem fundo)
+              if (centroid != null && centroid is Map && centroid['type'] == 'Point' && centroid['coordinates'] != null && roomName.isNotEmpty) {
+                markers.add(
+                  Marker(
+                    point: LatLng(centroid['coordinates'][1], centroid['coordinates'][0]),
+                    width: 80,
+                    height: 16,
+                    child: Text(
+                      roomName,
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w600,
+                        color: isDestination ? const Color(0xFF3C3CC0) : Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+            }
+
+            final position = locationService.currentPosition.value;
+            final activeRoute = locationService.activeRoute.value;
+            final center = position != null
+                ? LatLng(position.latitude, position.longitude)
+                : LatLng(-16.294387, -48.944379);
+
+            if (position != null && !_hasCenteredOnce) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                try {
+                  _mapController.move(center, widget.zoom);
+                } catch (e) {
+                  print('[MapWidget] erro ao mover o mapa (postFrame): $e');
+                }
               });
-            },
-          ),
+              _hasCenteredOnce = true;
+            }
+
+            final List<Polyline> allPolylines = [];
+            List<LatLng> uniqueRoutePoints = [];
+            
+            if (activeRoute != null) {
+              List<LatLng> routePoints = [];
+              if (activeRoute.steps.isNotEmpty) {
+                routePoints = [
+                  ...activeRoute.steps.expand((step) => [step.startPoint, step.endPoint])
+                ];
+              } else if (activeRoute.path != null && activeRoute.path!.isNotEmpty) {
+                routePoints = activeRoute.path!;
+              }
+              
+              for (final pt in routePoints) {
+                if (pt != null && (uniqueRoutePoints.isEmpty || uniqueRoutePoints.last != pt)) {
+                  uniqueRoutePoints.add(pt);
+                }
+              }
+            }
+            
+            // Marcador para rotas com ponto único (ex: escada em andar intermediário)
+            if (uniqueRoutePoints.length == 1) {
+              markers.add(
+                Marker(
+                  point: uniqueRoutePoints[0],
+                  width: 60,
+                  height: 60,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3C3CC0),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF3C3CC0).withOpacity(0.5),
+                          blurRadius: 15,
+                          spreadRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.stairs,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                center: center,
+                zoom: widget.zoom,
+                maxZoom: 22,
+          
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+                  subdomains: ['a', 'b', 'c'],
+                  userAgentPackageName: 'com.example.app',
+                ),
+                PolygonLayer(polygons: polygons),
+                
+                // Rota de navegação animada
+                if (uniqueRoutePoints.length > 1)
+                  AnimatedRouteLayer(routePoints: uniqueRoutePoints),
+                
+                MarkerLayer(markers: [
+                  ...markers,
+                  if (widget.showUserLocation && position != null)
+                    Marker(
+                      point: center,
+                      width: 80,
+                      height: 80,
+                      child: const AnimatedUserMarker(),
+                    ),
+                  if (MapWidget._selectedDestination != null)
+                    Marker(
+                      point: MapWidget._selectedDestination!,
+                      width: 40,
+                      height: 40,
+                      child: Icon(Icons.location_on, color: Colors.red, size: 40),
+                    ),
+                ]),
+              ],
+            );
+          }),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: Text(
             'Map tiles by Stamen, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 12, color: Colors.white),
             textAlign: TextAlign.center,
           ),
         ),
       ],
     );
   }
-  }
+}

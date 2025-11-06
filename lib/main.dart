@@ -10,6 +10,7 @@ import 'data/services/upload_image_services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   await dotenv.load(fileName: ".env");
   await EnvService.init();
 

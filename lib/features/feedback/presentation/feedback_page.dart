@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/services/feedback_service.dart';
 import '../../../routes/app_routes.dart';
+import '../../../data/services/feedback_service.dart';
+import '../../../data/services/auth_service.dart';
+import '../../home/presentation/components/sidebar.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});
@@ -14,6 +19,9 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
   int _currentStep = 0; // 0=parte 1, 1=parte 2, 2=parte 3, 3=parte 4
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
+  final FeedbackService _feedbackService = FeedbackService();
+  bool _isSubmitting = false;
+  
   String? _vinculo;
   bool? _jaUsouAppInterno;
   int? _q3;
@@ -31,6 +39,25 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
   final TextEditingController _q15Controller = TextEditingController();
   final TextEditingController _q16Controller = TextEditingController();
   final TextEditingController _q17Controller = TextEditingController();
+
+  String _sanitizeInput(String input) {
+    if (input.isEmpty) return input;
+    
+  
+    final dangerousPatterns = [
+      RegExp(r"('|(\\')|(;)|(\\;)|(--)|(/\*)|(\/\*)|(\*/)|(\*\/)|(xp_)|(sp_))", caseSensitive: false),
+      RegExp(r'\b(DROP|DELETE|INSERT|UPDATE|SELECT|UNION|EXEC|EXECUTE|SCRIPT|JAVASCRIPT|ALERT)\b', caseSensitive: false),
+    ];
+    
+    String sanitized = input;
+    for (var pattern in dangerousPatterns) {
+      sanitized = sanitized.replaceAll(pattern, '');
+    }
+    
+    sanitized = sanitized.replaceAll(RegExp(r'[<>{}]'), '');
+    
+    return sanitized.trim();
+  }
 
   @override
   void initState() {
@@ -211,108 +238,87 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
     );
   }
 
-  /// Mapeia o vínculo do formato do frontend para o formato esperado pelo backend
-  /// O backend espera: 'aluno', 'visitante', 'funcionario' (minúsculas)
-  String _mapVinculoToEnum(String v) {
-    switch (v) {
-      case 'aluno':
-        return 'aluno';
-      case 'visitante':
-        return 'visitante';
-      case 'funcionario':
-        return 'funcionario';
-      default:
-        return 'visitante';
-    }
-  }
+  void _submitFeedback() async {
+    if (_isSubmitting) return;
 
-  Future<void> _submitFeedback() async {
+    setState(() => _isSubmitting = true);
+
     try {
-      // Mostra indicador de carregamento
-      Get.dialog(
-        const Center(child: CircularProgressIndicator()),
-        barrierDismissible: false,
-      );
+      String deviceInfo = 'Unknown';
+      try {
+        if (kIsWeb) {
+          deviceInfo = 'Web';
+        } else {
+          if (Platform.isAndroid) {
+            deviceInfo = 'Android';
+          } else if (Platform.isIOS) {
+            deviceInfo = 'iOS';
+          } else if (Platform.isWindows) {
+            deviceInfo = 'Windows';
+          } else if (Platform.isMacOS) {
+            deviceInfo = 'MacOS';
+          } else if (Platform.isLinux) {
+            deviceInfo = 'Linux';
+          }
+        }
+      } catch (_) {}
 
-      final service = Get.isRegistered<FeedbackService>()
-          ? Get.find<FeedbackService>()
-          : Get.put(FeedbackService());
-
-      // Prepara o payload no formato esperado pelo backend
-      // Mapeia as respostas do questionário para os campos do DTO do backend
-      final payload = <String, dynamic>{
-        // Parte 1: Perfil
-        'vinculo': _mapVinculoToEnum(_vinculo!), // 'aluno', 'visitante', 'funcionario'
-        'jaUsouAppInterno': _jaUsouAppInterno!,
-        
-        // Parte 1: Navegação Básica (Likert 1-5)
-        'identificarLocalizacao': _q3!, // Q3: "Eu consegui identificar facilmente o ponto onde eu estava no mapa"
-        'instrucoesClaras': _q4!, // Q4: "As instruções do aplicativo foram claras para chegar ao destino"
-        
-        // Parte 2: Usabilidade e Interface (Likert 1-5)
-        'representacaoFiel': _q5!, // Q5: "A representação do campus estava fiel à realidade"
-        'trajetoFacilSeguir': _q6!, // Q6: "O trajeto indicado pelo UniGo foi fácil de seguir"
-        'facilUsar': _q7!, // Q7: "O aplicativo foi fácil de usar, mesmo sem instruções"
-        'designClaro': _q8!, // Q8: "As cores, ícones e textos facilitaram o entendimento"
-        'interacaoSemDificuldade': _q9!, // Q9: "Consegui interagir com o mapa sem dificuldades"
-        
-        // Parte 3: Eficiência e Satisfação (Likert 1-5)
-        'tempoRazoavel': _q10!, // Q10: "O aplicativo indicou corretamente o local que eu estava procurando"
-        'confiancaDestino': _q11!, // Q11: "A rota apresentada correspondia ao trajeto real"
-        'recomendaria': _q12!, // Q12: "Eu me senti confiante ao usar o aplicativo"
-        'voltariaUsar': _q13!, // Q13: "O aplicativo facilitou minha experiência de locomoção"
-        'satisfacaoGeral': _q14!, // Q14: "Eu recomendaria o UniGo para outros alunos ou visitantes"
-        
-        // Parte 4: Perguntas Abertas (opcionais)
-        if (_q15Controller.text.trim().isNotEmpty) 
-          'oQueAgradou': _q15Controller.text.trim(), // Q15: "O que mais te agradou na funcionalidade de mapeamento?"
-        if (_q16Controller.text.trim().isNotEmpty) 
-          'dificuldadesEncontradas': _q16Controller.text.trim(), // Q16: "Que dificuldade você encontrou ao usar o UniGo?"
-        if (_q17Controller.text.trim().isNotEmpty) 
-          'sugestoesMelhoria': _q17Controller.text.trim(), // Q17: "Você acredita que essa ferramenta pode ajudar novos alunos ou visitantes? Por quê?"
+      final feedbackData = {
+        'vinculo': _vinculo,
+        'jaUsouAppInterno': _jaUsouAppInterno,
+        'identificarLocalizacao': _q3,
+        'instrucoesClaras': _q4,
+        'representacaoFiel': _q5,
+        'trajetoFacilSeguir': _q6,
+        'facilUsar': _q7,
+        'designClaro': _q8,
+        'interacaoSemDificuldade': _q9,
+        'tempoRazoavel': _q10,
+        'confiancaDestino': _q11,
+        'recomendaria': _q12,
+        'voltariaUsar': _q13,
+        'satisfacaoGeral': _q14,
+        'oQueAgradou': _q15Controller.text.isNotEmpty ? _sanitizeInput(_q15Controller.text) : null,
+        'dificuldadesEncontradas': _q16Controller.text.isNotEmpty ? _sanitizeInput(_q16Controller.text) : null,
+        'sugestoesMelhoria': _q17Controller.text.isNotEmpty ? _sanitizeInput(_q17Controller.text) : null,
+        'deviceInfo': deviceInfo,
+        'appVersion': '1.0.0',
       };
 
-      // Envia o feedback para o backend
-      final ok = await service.createFeedback(payload);
-      
-      // Fecha o diálogo de carregamento
-      Get.back();
+      final result = await _feedbackService.submitFeedback(feedbackData);
 
-      if (ok) {
+      if (mounted) {
         Get.snackbar(
-          'Obrigado!',
-          'Feedback enviado com sucesso',
+          '🎉 Obrigado!',
+          result['message'] ?? 'Feedback enviado com sucesso! Sua opinião é muito importante para nós.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: const Color(0xFF3C3CC0),
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.green.shade100,
+          colorText: Colors.green.shade900,
+          duration: const Duration(seconds: 4),
+          icon: const Icon(Icons.check_circle, color: Colors.green),
+          margin: const EdgeInsets.all(16),
         );
-        await Future.delayed(const Duration(seconds: 3));
-        Get.offAllNamed(AppRoutes.HOME, arguments: {'visitor': true});
-      } else {
+        
+        // Redireciona para HOME (detectará automaticamente se é visitante)
+        Future.delayed(const Duration(seconds: 2), () {
+          Get.offAllNamed(AppRoutes.HOME);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
         Get.snackbar(
           'Erro',
-          'Não foi possível enviar seu feedback. Tente novamente.',
+          'Não foi possível enviar o feedback. Tente novamente.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+          backgroundColor: Colors.red.shade100,
+          colorText: Colors.red.shade900,
           duration: const Duration(seconds: 4),
         );
       }
-    } catch (e) {
-      // Fecha o diálogo de carregamento se ainda estiver aberto
-      if (Get.isDialogOpen ?? false) {
-        Get.back();
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
-      
-      Get.snackbar(
-        'Erro',
-        'Ocorreu um erro ao enviar seu feedback: ${e.toString()}',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
     }
   }
 
@@ -340,24 +346,48 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    // Verifica se é visitante
+    final authService = Get.find<AuthService>();
+    final isVisitor = authService.currentUser.value == null || 
+                      (Get.arguments != null && Get.arguments['visitor'] == true);
+    
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
+      drawer: isVisitor ? null : Sidebar(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF3C3CC0),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (_currentStep > 0) {
-              setState(() {
-                _currentStep -= 1;
-              });
-            } else {
-              // Voltar para a Home (/) quando estiver no primeiro step
-              Get.offAllNamed(AppRoutes.HOME);
-            }
-          },
-        ),
+        leading: isVisitor
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  if (_currentStep > 0) {
+                    setState(() {
+                      _currentStep -= 1;
+                    });
+                  } else {
+                    // Visitante: voltar para HOME
+                    Get.offAllNamed(AppRoutes.HOME);
+                  }
+                },
+              )
+            : (_currentStep > 0
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        _currentStep -= 1;
+                      });
+                    },
+                  )
+                : Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: () {
+                        Scaffold.of(context).openDrawer();
+                      },
+                    ),
+                  )),
         title: const Text(''),
       ),
       body: SafeArea(
@@ -512,33 +542,46 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 50), // Gap between legend and content
+                            const SizedBox(height: 50), 
                             _currentStep == 2
                                 ? _buildStepContentStep3()
                                 : _currentStep == 3
                                     ? _buildStepContentStep4()
                                     : _buildStepContent(),
-                            const SizedBox(height: 50), // Gap between content and button
+                            const SizedBox(height: 50), 
                             Center(
                               child: SizedBox(
                                 width: 220,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    if (_currentStep < 3) {
-                                      if (_canContinue) {
-                                        setState(() => _currentStep += 1);
-                                      }
-                                    } else {
-                                      _submitFeedback();
-                                    }
-                                  },
+                                  onPressed: _isSubmitting
+                                      ? null
+                                      : () {
+                                          if (_currentStep < 3) {
+                                            if (_canContinue) {
+                                              setState(() => _currentStep += 1);
+                                            }
+                                          } else {
+                                            _submitFeedback();
+                                          }
+                                        },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _canContinue ? const Color(0xFF3C3CC0) : const Color(0xFFD9D9D9),
+                                    backgroundColor: _canContinue && !_isSubmitting
+                                        ? const Color(0xFF3C3CC0)
+                                        : const Color(0xFFD9D9D9),
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                                     padding: const EdgeInsets.symmetric(vertical: 14),
                                   ),
-                                  child: Text(_currentStep == 3 ? 'ENVIAR' : 'PRÓXIMO'),
+                                  child: _isSubmitting
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(_currentStep == 3 ? 'ENVIAR' : 'PRÓXIMO'),
                                 ),
                               ),
                             ),

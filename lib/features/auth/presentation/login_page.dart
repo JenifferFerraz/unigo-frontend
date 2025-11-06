@@ -8,7 +8,12 @@ import '../../../data/services/location_service.dart';
 import '../../../routes/app_routes.dart';
 import '../../../core/constants/app_colors.dart';
 
+
 class LoginPage extends GetView<AuthService> {
+  bool _hasInjection(String value) {
+    final pattern = RegExp(r'select\s|insert\s|update\s|delete\s|<script>|<html>|<body>', caseSensitive: false);
+    return pattern.hasMatch(value);
+  }
   const LoginPage({Key? key}) : super(key: key);
 
   @override
@@ -75,10 +80,35 @@ class LoginPage extends GetView<AuthService> {
                         text: 'Entrar',
                         isLoading: controller.isLoading.value,
                         onPressed: () async {
+                          if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+                            Get.snackbar(
+                              'Campos Incompletos',
+                              'Por favor, preencha todos os campos obrigatórios',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.orange[100],
+                              colorText: Colors.orange[900],
+                              duration: const Duration(seconds: 4),
+                            );
+                            return;
+                          }
+                          if (_hasInjection(emailController.text) || _hasInjection(passwordController.text)) {
+                            Get.snackbar(
+                              'Valor inválido',
+                              'Os campos não podem conter comandos SQL ou HTML.',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.red[100],
+                              colorText: Colors.red[900],
+                              duration: const Duration(seconds: 4),
+                            );
+                            return;
+                          }
                           final success = await controller.login(
                             email: emailController.text,
                             password: passwordController.text,
                           );
+                          if (success) {
+                            Get.offAllNamed(AppRoutes.HOME);
+                          }
                         },
                       )),
                       const SizedBox(height: 24),

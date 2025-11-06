@@ -1,52 +1,107 @@
 import 'package:dio/dio.dart';
-import 'package:get/get.dart';
 import '../../core/config/env_service.dart';
-import 'storage_service.dart';
+import '../../storage/token_storage.dart';
 
 class FeedbackService {
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: EnvService.apiBaseUrl,
-      headers: {'Content-Type': 'application/json'},
-    ),
-  );
+  final Dio _client;
 
-  Future<bool> createFeedback(Map<String, dynamic> payload) async {
+  FeedbackService({Dio? client})
+      : _client = client ??
+            Dio(BaseOptions(
+              baseUrl: EnvService.apiBaseUrl,
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 10),
+              headers: {'Content-Type': 'application/json'},
+            ));
+
+  Future<Map<String, dynamic>> submitFeedback(Map<String, dynamic> feedbackData) async {
     try {
-      String? token;
-      try {
-        final storageService = Get.find<StorageService>();
-        token = await storageService.getToken();
-      } catch (e) {
-        token = null;
-      }
+      final token = await TokenStorage.getToken();
 
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
-
-      // Adiciona o token de autenticação se disponível
-      if (token != null && token.isNotEmpty) {
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      
+      if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
+      // Se não tiver token, feedback será anônimo
 
-      // Envia o feedback para o backend
-      final response = await _dio.post(
+      final res = await _client.post(
         '/api/feedback',
-        data: payload,
+        data: feedbackData,
         options: Options(headers: headers),
       );
 
-      return response.statusCode == 200 || response.statusCode == 201;
-    } on DioException {
-      // Tratamento de erro do Dio
-      // Log pode ser adicionado aqui se necessário para debug
-      return false;
-    } catch (_) {
-      // Tratamento para outros tipos de erro
-      return false;
+      if (res.statusCode == 201) {
+        return res.data as Map<String, dynamic>;
+      }
+      throw Exception('Erro ao enviar feedback');
+    } on DioException catch (e) {
+      if (e.response?.data != null) {
+        throw Exception(e.response!.data['message'] ?? 'Erro ao enviar feedback');
+      }
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getStatistics() async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) throw Exception('Token não encontrado');
+
+      final res = await _client.get(
+        '/api/feedback/stats',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      if (res.statusCode == 200) {
+        return res.data as Map<String, dynamic>;
+      }
+      throw Exception('Erro ao buscar estatísticas');
+    } on DioException catch (e) {
+      if (e.response?.data != null) {
+        throw Exception(e.response!.data['message'] ?? 'Erro ao buscar estatísticas');
+      }
+      rethrow;
+    }
+  }
+
+  /// Listar todos os feedbacks (apenas admin)
+  Future<List<Map<String, dynamic>>> listFeedbacks({
+    String? vinculo,
+    bool? isAnonymous,
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      final token = await TokenStorage.getToken();
+      if (token == null) throw Exception('Token não encontrado');
+
+      final query = <String, dynamic>{};
+      if (vinculo != null) query['vinculo'] = vinculo;
+      if (isAnonymous != null) query['isAnonymous'] = isAnonymous.toString();
+      if (startDate != null) query['startDate'] = startDate;
+      if (endDate != null) query['endDate'] = endDate;
+
+      final res = await _client.get(
+        '/api/feedback',
+        queryParameters: query,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      if (res.statusCode == 200) {
+        final data = res.data as List<dynamic>;
+        return data.cast<Map<String, dynamic>>();
+      }
+      throw Exception('Erro ao listar feedbacks');
+    } on DioException catch (e) {
+      if (e.response?.data != null) {
+        throw Exception(e.response!.data['message'] ?? 'Erro ao listar feedbacks');
+      }
+      rethrow;
     }
   }
 }
-
-

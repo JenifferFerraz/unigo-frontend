@@ -26,7 +26,7 @@ class AccessSelectionPage extends StatelessWidget {
                     children: [
                       const SizedBox(height: 32),
                       Image.asset('assets/images/Logo.png', height: 100),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: Image.asset(
@@ -35,24 +35,21 @@ class AccessSelectionPage extends StatelessWidget {
                           fit: BoxFit.cover,
                         ),
                       ),
-                      Transform.translate(
-                        offset: const Offset(0, -1),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: () => Get.offAllNamed(AppRoutes.REGISTER),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: AppColors.primary,
-                                    minimumSize: const Size(double.infinity, 48),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                    ),
-                                    side: const BorderSide(color: AppColors.primary, width: 2),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => Get.offAllNamed(AppRoutes.REGISTER),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.primary,
+                                  minimumSize: const Size(double.infinity, 48),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
                                   ),
                                   child: const Text('PRIMEIRO ACESSO', style: TextStyle(fontWeight: FontWeight.bold)),
                                 ),

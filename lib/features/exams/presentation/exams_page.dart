@@ -20,7 +20,7 @@ class _ExamsPageState extends State<ExamsPage> {
     super.initState();
     _discoverCycles();
   }
-  String _selectedShift = 'all'; // 'all' | 'matutino' | 'noturno'
+  String _selectedShift = 'all'; 
 
   Future<void> _discoverCycles() async {
     try {
@@ -78,27 +78,11 @@ class _ExamsPageState extends State<ExamsPage> {
             key: ValueKey('$_selectedCycle-$_selectedShift'),
             future: _loadExams(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
-              }
-              if (snapshot.hasError) {
-                return Center(child: Text('Erro ao carregar provas: \$${snapshot.error}'));
-              }
-
               final exams = snapshot.data ?? [];
-
-              if (exams.isEmpty) {
-                return const SizedBox(
-                  height: 200,
-                  child: Center(child: Text('Nenhuma prova encontrada para o filtro selecionado')),
-                );
-              }
-
               return SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Cycle selector as a dropdown (matches previous layout)
                     DropdownButtonFormField<int>(
                       value: _selectedCycle,
                       decoration: const InputDecoration(
@@ -117,7 +101,6 @@ class _ExamsPageState extends State<ExamsPage> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    // Shift selector: Matutino / Noturno
                     DropdownButtonFormField<String>(
                       value: _selectedShift,
                       decoration: const InputDecoration(
@@ -139,8 +122,17 @@ class _ExamsPageState extends State<ExamsPage> {
                     const SizedBox(height: 24),
                     const Text('Aplicação de Provas 1ª VA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     const SizedBox(height: 16),
-                    // Group exams by date so the day header appears once per date
-                    ..._buildGroupedExamWidgets(exams),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                    if (snapshot.hasError)
+                      Center(child: Text('Erro ao carregar provas: ${snapshot.error}')),
+                    if (!snapshot.hasError && snapshot.connectionState == ConnectionState.done && exams.isEmpty)
+                      const SizedBox(
+                        height: 200,
+                        child: Center(child: Text('Nenhuma prova encontrada para o filtro selecionado')),
+                      ),
+                    if (exams.isNotEmpty)
+                      ..._buildGroupedExamWidgets(exams),
                     const SizedBox(height: 24),
                     Center(
                       child: SizedBox(
@@ -175,7 +167,6 @@ class _ExamsPageState extends State<ExamsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: day on left, date on right to avoid long combined text
           Row(
             children: [
               Expanded(child: Text(day, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
@@ -197,7 +188,6 @@ class _ExamsPageState extends State<ExamsPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: subject + time, take remaining space and ellipsize if long
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +206,6 @@ class _ExamsPageState extends State<ExamsPage> {
 
           const SizedBox(width: 12),
 
-          // Right: compact grade/period area with fixed width to avoid overflow
           SizedBox(
             width: 60,
             child: Text(
@@ -245,7 +234,6 @@ class _ExamsPageState extends State<ExamsPage> {
     final widgets = <Widget>[];
     for (final date in sortedDates) {
       final list = grouped[date]!;
-      // use day name from first element if available
       final dayName = list.first['day'] ?? '';
       widgets.add(_buildExamDay(dayName, date, [
         for (final e in list) _buildExamItem(e['subject'] ?? '', e['time'] ?? '', e['grade'] ?? ''),

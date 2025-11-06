@@ -137,5 +137,5 @@ class _SchedulePage extends State<SchedulePage> {
     );
   }
 
-  // Removido: tabela de horários e métodos relacionados
+  
 }

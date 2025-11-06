@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
@@ -7,8 +8,69 @@ import 'package:latlong2/latlong.dart';
 import '../providers/location_provider.dart';
 import '../models/location_model.dart';
 import '../models/navigation_model.dart';
+import 'package:unigo_mobile/core/config/env_service.dart';
+import 'websocket_service.dart';
+
+enum MultiFloorNavigationStage { toStairs, stairs, fromStairs, none }
 
 class LocationService extends GetxService {
+  final Rx<MultiFloorNavigationStage> multiFloorStage = MultiFloorNavigationStage.none.obs;
+  List<LatLng> _pathToStairs = [];
+  List<LatLng> _pathFromStairs = [];
+  List<LatLng> _stairsTransition = [];
+  int? _destinationFloor;
+  int? _navigationStructureId;
+  int? _destinationRoomId;
+  
+  List<Map<String, dynamic>> _floorPaths = []; 
+  List<Map<String, dynamic>> _stairTransitions = []; 
+  
+  int? get destinationFloor => _destinationFloor;
+  List<LatLng> get pathFromStairs => _pathFromStairs;
+  List<LatLng> get pathToStairs => _pathToStairs;
+  List<Map<String, dynamic>> get floorPaths => _floorPaths;
+  List<Map<String, dynamic>> get stairTransitions => _stairTransitions;
+  final Rxn<Map<String, dynamic>> nearestStructure = Rxn<Map<String, dynamic>>();
+
+  @override
+  void onInit() {
+    super.onInit();
+    ever(nearestStructure, (nearest) async {
+      if (nearest != null && nearest['isNavigating'] == true) {
+        return;
+      }
+      
+      if (nearest != null && nearest['id'] != null && nearest['floors'] != null && nearest['floors'] is List && nearest['floors'].isNotEmpty) {
+        final structureId = nearest['id'];
+        final floor = nearest['floors'][0];
+        final pos = currentPosition.value;
+        if (pos != null) {
+          try {
+            WebSocketService ws;
+            if (!Get.isRegistered<WebSocketService>()) {
+              ws = Get.put(WebSocketService());
+              await ws.connect();
+            } else {
+              ws = Get.find<WebSocketService>();
+              if (!ws.isConnected.value) {
+                await ws.connect();
+              }
+            }
+            if (ws.isConnected.value) {
+              ws.sendPosition(
+                position: [pos.longitude, pos.latitude],
+                structureId: structureId,
+                floor: floor,
+              );
+            }
+          } catch (e) {
+            print('[LocationService] Erro ao reenviar posição para WebSocket após nearestStructure: $e');
+          }
+        }
+      }
+    });
+  }
+  final RxList<Map<String, dynamic>> roomsOnFloor = <Map<String, dynamic>>[].obs;
   final RxBool isLocationEnabled = false.obs;
   final Rxn<Position> currentPosition = Rxn<Position>();
   final RxList<Location> locations = RxList<Location>();
@@ -18,25 +80,23 @@ class LocationService extends GetxService {
   final Rxn<NavigationRoute> activeRoute = Rxn<NavigationRoute>();
   final Rxn<NavigationProgress> navigationProgress = Rxn<NavigationProgress>();
   final RxBool isNavigating = false.obs;
+  final RxBool recentlyStoppedNavigation = false.obs; // Previne dialog após parar navegação
 
   final LocationProvider _locationProvider = LocationProvider();
   final RxBool isLoading = false.obs;
   final RxString error = ''.obs;
   StreamSubscription<Position>? _positionStreamSubscription;
   
-  // Parâmetros otimizados para bloco de ~2719m² (40x68m aprox.)
-  static const double ACCURACY_THRESHOLD = 12.0; // metros - mais rigoroso para ambiente interno
-  static const double MIN_DISTANCE_FILTER = 1.5; // metros - movimento mínimo (mais sensível)
-  static const double STATIONARY_THRESHOLD = 1.0; // metros - muito sensível para detectar paradas
-  static const int POSITION_BUFFER_SIZE = 7; // mais posições para suavização interna
-  static const double MAX_SPEED_THRESHOLD = 8.0; // m/s - 28.8 km/h (mais realista para caminhada interna)
+  static const double ACCURACY_THRESHOLD = 1000.0; 
+  static const double MIN_DISTANCE_FILTER = 1.5;
+  static const double STATIONARY_THRESHOLD = 1.0;
+  static const int POSITION_BUFFER_SIZE = 7;
+  static const double MAX_SPEED_THRESHOLD = 8.0;
   
-  // Parâmetros específicos para navegação interna
-  static const double INDOOR_STEP_COMPLETION_DISTANCE = 3.0; // metros - quando considerar step completo
-  static const double CORRIDOR_WIDTH_THRESHOLD = 2.5; // metros - largura típica de corredor
-  static const int INDOOR_UPDATE_INTERVAL_STATIONARY = 15; // segundos entre updates quando parado
+  static const double INDOOR_STEP_COMPLETION_DISTANCE = 3.0;
+  static const double CORRIDOR_WIDTH_THRESHOLD = 2.5;
+  static const int INDOOR_UPDATE_INTERVAL_STATIONARY = 15;
   
-  // Buffer para suavização de posições
   final List<Position> _positionBuffer = [];
   Position? _lastValidPosition;
   DateTime? _lastUpdateTime;
@@ -44,38 +104,28 @@ class LocationService extends GetxService {
   final RxDouble _currentAccuracy = 0.0.obs;
 
   Future<LocationService> init() async {
-    final start = DateTime.now();
-    print('[LocationService] Iniciando LocationService...');
     try {
       isLocationEnabled.value = await Geolocator.isLocationServiceEnabled();
-      print('[LocationService] isLocationEnabled: \\${isLocationEnabled.value}');
-      final blocksStart = DateTime.now();
       await getBlocks();
-      print('[LocationService] getBlocks levou: \\${DateTime.now().difference(blocksStart).inMilliseconds}ms');
     } catch (e) {
       print('Erro ao inicializar serviço de localização: $e');
     }
-    print('[LocationService] init levou: \\${DateTime.now().difference(start).inMilliseconds}ms');
     return this;
   }
 
   Future<bool> requestLocationPermission() async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
-      print('[LocationService] Permissão inicial: $permission');
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        print('[LocationService] Permissão após request: $permission');
       }
 
       if (permission == LocationPermission.deniedForever) {
-        print('[LocationService] Permissão negada para sempre. Usuário precisa liberar nas configurações.');
         error.value = 'Permissão de localização negada permanentemente. Ative nas configurações.';
         return false;
       }
 
       if (permission == LocationPermission.denied) {
-        print('[LocationService] Permissão negada.');
         error.value = 'Permissão de localização negada.';
         return false;
       }
@@ -86,22 +136,18 @@ class LocationService extends GetxService {
             desiredAccuracy: LocationAccuracy.high,
             timeLimit: const Duration(seconds: 10),
           );
-          print('[LocationService] Localização obtida: ${currentPosition.value}');
           _startLocationTracking();
           return true;
         } catch (e) {
           if (e is TimeoutException) {
-            print('[LocationService] Timeout ao obter localização.');
             error.value = 'Tempo esgotado ao tentar obter localização. Tente novamente.';
           } else {
             print('[LocationService] Erro ao obter localização: $e');
             error.value = 'Erro ao obter localização: $e';
           }
-          // Permissão está ok, mas localização não veio
           return false;
         }
       }
-      print('[LocationService] Estado de permissão inesperado: $permission');
       error.value = 'Estado de permissão inesperado: $permission';
       return false;
     } catch (e) {
@@ -111,26 +157,343 @@ class LocationService extends GetxService {
     }
   }
 
+  Future<void> fetchAndSetInternalRoute({
+    required int structureId,
+    required int floor,
+    required List<double> end,
+    int? roomId,
+  }) async {
+    isLoading.value = true;
+    error.value = '';
+    
+    isNavigating.value = true;
+    
+    _clearNavigationState();
+    
+    _navigationStructureId = structureId;
+    _destinationRoomId = roomId;
+    try {
+      final pos = currentPosition.value;
+      if (pos == null) {
+        error.value = 'Posição atual não disponível';
+        return;
+      }
+      final start = [pos.latitude, pos.longitude];
+      final url = '${EnvService.apiBaseUrl}/internal-route/shortest-to-room';
+      final body = {
+        'structureId': structureId,
+        'floor': floor,
+        'start': [pos.longitude, pos.latitude],
+      };
+      if (roomId != null) body['roomId'] = roomId;
+
+      final response = await GetConnect().post(url, body);
+      if (response.statusCode == 200 && response.body != null) {
+        final data = response.body;
+        // Response recebido com sucesso
+
+        if (data is Map<String, dynamic> &&
+            data.containsKey('pathToStairs') &&
+            data.containsKey('stairsTransition') &&
+            data.containsKey('pathFromStairs')) {
+
+          if (data['pathToStairs'] is! List || (data['pathToStairs'] as List).isEmpty) {
+            error.value = 'Dados de rota inválidos: pathToStairs vazio ou inválido';
+            return;
+          }
+          if (data['pathFromStairs'] is! List || (data['pathFromStairs'] as List).isEmpty) {
+            error.value = 'Dados de rota inválidos: pathFromStairs vazio ou inválido';
+            return;
+          }
+
+          if (data.containsKey('destinationFloor')) {
+            _destinationFloor = data['destinationFloor'] as int;
+          }
+
+          try {
+            _pathToStairs = (data['pathToStairs'] as List)
+                .map((p) => LatLng((p as List)[1], p[0]))
+                .toList();
+
+            final stairsFrom = data['stairsTransition']['from'] as List;
+            final stairsTo = data['stairsTransition']['to'] as List;
+            _stairsTransition = [
+              LatLng(stairsFrom[1], stairsFrom[0]),
+              LatLng(stairsTo[1], stairsTo[0]),
+            ];
+
+            _pathFromStairs = (data['pathFromStairs'] as List)
+                .map((p) => LatLng((p as List)[1], p[0]))
+                .toList();
+
+            // Processar floorPaths se disponível (nova estrutura completa)
+            if (data.containsKey('floorPaths') && data['floorPaths'] is List) {
+              _floorPaths = (data['floorPaths'] as List).map((fp) {
+                final pathPoints = (fp['path'] as List)
+                    .map((p) => LatLng((p as List)[1], p[0]))
+                    .toList();
+                return {
+                  'floor': fp['floor'] as int,
+                  'path': pathPoints,
+                };
+              }).toList();
+              // FloorPaths carregados com sucesso
+            }
+
+            // Processar stairTransitions se disponível
+            if (data.containsKey('stairTransitions') && data['stairTransitions'] is List) {
+              _stairTransitions = (data['stairTransitions'] as List).map((st) {
+                final from = st['from'] as List;
+                final to = st['to'] as List;
+                return {
+                  'from': LatLng(from[1], from[0]),
+                  'to': LatLng(to[1], to[0]),
+                  'fromFloor': st['fromFloor'] as int,
+                  'toFloor': st['toFloor'] as int,
+                };
+              }).toList();
+              // StairTransitions carregadas
+            }
+          } catch (e) {
+            print('[LocationService] Erro ao parsear caminhos: $e');
+            error.value = 'Erro ao processar dados de rota multi-andar';
+            return;
+          }
+
+          // Iniciar no estágio 1: indo para as escadas
+          multiFloorStage.value = MultiFloorNavigationStage.toStairs;
+
+          // Atualizar nearestStructure usando dados da resposta
+          if (data.containsKey('structure') && data['structure'] != null) {
+            final structureData = data['structure'] as Map<String, dynamic>;
+            final roomsByFloor = data.containsKey('roomsByFloor') ? data['roomsByFloor'] as Map<String, dynamic> : {};
+            
+            nearestStructure.value = {
+              'id': structureId,
+              'name': structureData['name'],
+              'floors': List<int>.from(data['availableFloors']),
+              'centroid': structureData['centroid'],
+              'geometry': structureData['geometry'],
+              'roomsByFloor': roomsByFloor,
+              'isNavigating': true, 
+            };
+          } else if (data.containsKey('availableFloors')) {
+            final currentStructure = nearestStructure.value ?? {};
+            nearestStructure.value = {
+              ...currentStructure,
+              'id': structureId,
+              'floors': List<int>.from(data['availableFloors']),
+              'isNavigating': true, 
+            };
+          } else {
+            final startFloor = floor;
+            final destFloor = data.containsKey('destinationFloor') ? data['destinationFloor'] as int : floor;
+            
+            final floors = <int>[];
+            if (startFloor <= destFloor) {
+              for (int i = startFloor; i <= destFloor; i++) {
+                floors.add(i);
+              }
+            } else {
+              for (int i = startFloor; i >= destFloor; i--) {
+                floors.add(i);
+              }
+            }
+            
+            if (floors.isNotEmpty) {
+              final currentStructure = nearestStructure.value ?? {};
+              nearestStructure.value = {
+                ...currentStructure,
+                'id': structureId,
+                'floors': floors,
+                'isNavigating': true,
+              };
+            }
+          }
+
+          // Usar rota do andar inicial
+          List<LatLng> initialPath = [];
+          
+          if (_floorPaths.isNotEmpty) {
+            final currentFloorPath = getPathForFloor(floor);
+            if (currentFloorPath != null && currentFloorPath.isNotEmpty) {
+              initialPath = currentFloorPath;
+            } else {
+              initialPath = _pathToStairs;
+            }
+          } else {
+            initialPath = _pathToStairs;
+          }
+
+          double totalDist = 0;
+          for (int i = 1; i < initialPath.length; i++) {
+            totalDist += Distance().as(LengthUnit.Meter, initialPath[i - 1], initialPath[i]);
+          }
+
+          activeRoute.value = NavigationRoute(
+            steps: [],
+            totalDistance: totalDist,
+            estimatedDuration: (totalDist / 1.4).toInt(),
+            path: initialPath,
+            destination: roomId,
+          );
+
+          if (data.containsKey('roomsByFloor') && data['roomsByFloor'] is Map) {
+            final roomsByFloor = data['roomsByFloor'] as Map<String, dynamic>;
+            final floorKey = floor.toString();
+            
+            if (roomsByFloor.containsKey(floorKey) && roomsByFloor[floorKey] is List) {
+              roomsOnFloor.assignAll(List<Map<String, dynamic>>.from(roomsByFloor[floorKey]));
+            }
+          }
+
+        } else {
+          // Navegação no mesmo andar
+          multiFloorStage.value = MultiFloorNavigationStage.none;
+
+          List<List<double>> routePoints = [];
+          if (data is Map<String, dynamic> && data.containsKey('path')) {
+            routePoints = List<List<dynamic>>.from(data['path'])
+                .map((p) => List<double>.from(p)).toList();
+          } else if (data is List) {
+            routePoints = data.map<List<double>>((p) => List<double>.from(p)).toList();
+          }
+
+          if (routePoints.isNotEmpty) {
+            final List<LatLng> latlngs = routePoints.map((p) => LatLng(p[1], p[0])).toList();
+
+            double totalDist = 0;
+            for (int i = 1; i < latlngs.length; i++) {
+              totalDist += Distance().as(LengthUnit.Meter, latlngs[i - 1], latlngs[i]);
+            }
+
+            activeRoute.value = NavigationRoute(
+              steps: [],
+              totalDistance: totalDist,
+              estimatedDuration: (totalDist / 1.4).toInt(),
+              path: latlngs,
+              destination: roomId,
+            );
+          }
+        }
+      } else {
+        error.value = 'Erro ao buscar rota: ${response.statusText}';
+        isNavigating.value = false; // Resetar se falhou
+      }
+    } catch (e) {
+      error.value = 'Erro ao buscar rota: $e';
+      isNavigating.value = false; // Resetar se falhou
+    } finally {
+      isLoading.value = false;
+    }
+  }
+  
+  Future<void> checkMultiFloorTransition(LatLng userPosition, {double threshold = 8.0}) async {
+    // Estágio 1: Indo para as escadas (threshold aumentado para 8 metros para melhor detecção)
+    if (multiFloorStage.value == MultiFloorNavigationStage.toStairs && _pathToStairs.isNotEmpty) {
+      final lastStairsPoint = _pathToStairs.last;
+      final distance = Distance().as(LengthUnit.Meter, userPosition, lastStairsPoint);
+      print('[LocationService] Distância até escadas: ${distance.toStringAsFixed(2)}m (threshold: ${threshold}m)');
+      if (distance < threshold) {
+        print('[LocationService] ✓ Chegou às escadas, mudando para estágio stairs');
+        multiFloorStage.value = MultiFloorNavigationStage.stairs;
+        // Mostrar a transição das escadas
+        if (_stairsTransition.isNotEmpty) {
+          activeRoute.value = NavigationRoute(
+            steps: [],
+            totalDistance: Distance().as(LengthUnit.Meter, _stairsTransition.first, _stairsTransition.last),
+            estimatedDuration: 30, // estimativa de 30 segundos para subir/descer escadas
+            path: _stairsTransition,
+          );
+        }
+      }
+    } 
+    // Estágio 2: Nas escadas, aguardando chegar no outro andar
+    else if (multiFloorStage.value == MultiFloorNavigationStage.stairs && _stairsTransition.isNotEmpty) {
+      final stairsEnd = _stairsTransition.last;
+      final distance = Distance().as(LengthUnit.Meter, userPosition, stairsEnd);
+      print('[LocationService] Distância até fim das escadas: ${distance.toStringAsFixed(2)}m (threshold: ${threshold}m)');
+      if (distance < threshold) {
+        print('[LocationService] ✓ Chegou ao outro andar, mudando para estágio fromStairs');
+        multiFloorStage.value = MultiFloorNavigationStage.fromStairs;
+        
+        // Notificar backend sobre mudança de andar via WebSocket
+        if (_destinationFloor != null && _navigationStructureId != null) {
+          try {
+            WebSocketService ws;
+            if (!Get.isRegistered<WebSocketService>()) {
+              ws = Get.put(WebSocketService());
+              await ws.connect();
+            } else {
+              ws = Get.find<WebSocketService>();
+              if (!ws.isConnected.value) {
+                await ws.connect();
+              }
+            }
+            if (ws.isConnected.value) {
+              ws.sendPosition(
+                position: [userPosition.longitude, userPosition.latitude],
+                structureId: _navigationStructureId!,
+                floor: _destinationFloor!,
+              );
+            }
+          } catch (e) {
+            print('[LocationService] Erro ao atualizar WebSocket: $e');
+          }
+        }
+        
+        // Mostrar o caminho do andar de destino
+        activeRoute.value = NavigationRoute(
+          steps: [],
+          totalDistance: _pathFromStairs.fold<double>(0.0, (sum, point) {
+            if (_pathFromStairs.indexOf(point) == 0) return 0;
+            final prev = _pathFromStairs[_pathFromStairs.indexOf(point) - 1];
+            return sum + Distance().as(LengthUnit.Meter, prev, point);
+          }),
+          estimatedDuration: 0,
+          path: _pathFromStairs,
+          destination: _destinationRoomId,
+        );
+      }
+    }
+  }
+
   Future<Position?> getCurrentLocation() async {
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: const Duration(seconds: 10),
       );
-      print('[LocationService] Localização única obtida: $position');
-      // Aplicar filtro de precisão mesmo para posição única
       if (position.accuracy <= ACCURACY_THRESHOLD) {
         currentPosition.value = position;
-        print('[LocationService] Localização aceita (precisão ${position.accuracy}m)');
+        try {
+          WebSocketService ws;
+          if (!Get.isRegistered<WebSocketService>()) {
+            ws = Get.put(WebSocketService());
+            await ws.connect();
+          } else {
+            ws = Get.find<WebSocketService>();
+            if (!ws.isConnected.value) {
+              await ws.connect();
+            }
+          }
+          if (ws.isConnected.value) {
+            ws.sendPosition(
+              position: [position.longitude, position.latitude],
+              structureId: null,
+              floor: null,
+            );
+          }
+        } catch (e) {
+          print('[LocationService] Erro ao garantir conexão/enviar posição para WebSocket: $e');
+        }
         return position;
       } else {
-        print('[LocationService] Posição descartada por baixa precisão: ${position.accuracy}m');
         error.value = 'Localização obtida com baixa precisão (${position.accuracy}m). Aguarde ou tente novamente.';
         return currentPosition.value;
       }
     } catch (e) {
       if (e is TimeoutException) {
-        print('[LocationService] Timeout ao obter localização.');
         error.value = 'Tempo esgotado ao tentar obter localização. Tente novamente.';
       } else {
         print('[LocationService] Erro ao obter localização: $e');
@@ -140,17 +503,14 @@ class LocationService extends GetxService {
     }
   }
 
-  // Filtrar posição baseado em critérios de precisão
-  bool _isPositionValid(Position position) {
+  bool _isValidPosition(Position position) {
     // 1. Verificar precisão
     if (position.accuracy > ACCURACY_THRESHOLD) {
-      print('Posição rejeitada: precisão muito baixa (${position.accuracy}m)');
       return false;
     }
 
-    // 2. Verificar velocidade suspeita (possível erro de GPS)
+    // 2. Verificar velocidade reportada
     if (position.speed > MAX_SPEED_THRESHOLD) {
-      print('Posição rejeitada: velocidade muito alta (${position.speed}m/s)');
       return false;
     }
 
@@ -202,7 +562,7 @@ class LocationService extends GetxService {
     double totalWeight = 0;
 
     for (int i = 0; i < _positionBuffer.length; i++) {
-      final weight = i + 1; // peso crescente para posições mais recentes
+      final weight = i + 1;
       totalLat += _positionBuffer[i].latitude * weight;
       totalLng += _positionBuffer[i].longitude * weight;
       totalWeight += weight;
@@ -211,7 +571,6 @@ class LocationService extends GetxService {
     final smoothLat = totalLat / totalWeight;
     final smoothLng = totalLng / totalWeight;
 
-    // Retornar nova posição suavizada mantendo outros dados da posição atual
     return Position(
       latitude: smoothLat,
       longitude: smoothLng,
@@ -244,45 +603,104 @@ class LocationService extends GetxService {
     _positionStreamSubscription?.cancel();
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: LocationSettings(
-        accuracy: LocationAccuracy.high, 
-        distanceFilter: isNavigating.value ? 1 : 2, // Mais sensível para ambiente interno
+        accuracy: LocationAccuracy.high,
+        distanceFilter: isNavigating.value ? 1 : 2,
       ),
-    ).listen((Position position) {
+    ).listen((Position position) async {
       _currentAccuracy.value = position.accuracy;
-      
-      // Aplicar filtros de validação
-      if (!_isPositionValid(position)) {
-        return; // Descartar posição inválida
+
+      if (!_isValidPosition(position)) {
+        return;
       }
 
-      // Detectar se está parado
       _updateStationaryStatus(position);
-      
-      // Se está parado e não navegando, não atualizar posição frequentemente
+      final now = DateTime.now();
+
+      // Se usuário está parado e não navegando, reduzir atualizações
       if (_isUserStationary && !isNavigating.value) {
-        final now = DateTime.now();
-        if (_lastUpdateTime != null && 
+        if (_lastUpdateTime != null &&
             now.difference(_lastUpdateTime!).inSeconds < INDOOR_UPDATE_INTERVAL_STATIONARY) {
-          return; // Não atualizar se atualizou recentemente e está parado
+          return;
         }
       }
 
-      // Aplicar suavização
       final smoothedPosition = _smoothPosition(position);
-      
-      // Atualizar posição atual
+
       currentPosition.value = smoothedPosition;
       _lastValidPosition = smoothedPosition;
       _lastUpdateTime = DateTime.now();
 
-      // Atualizar navegação se ativa
+      try {
+        final ws = Get.isRegistered<WebSocketService>() ? Get.find<WebSocketService>() : null;
+        if (ws != null && ws.isConnected.value) {
+          ws.sendPosition(
+            position: [smoothedPosition.latitude, smoothedPosition.longitude],
+            structureId: null,
+            floor: null,
+          );
+        }
+      } catch (e) {
+        print('[LocationService] Erro ao enviar posição para WebSocket: $e');
+      }
+
       if (isNavigating.value && activeRoute.value != null && navigationProgress.value != null) {
         _updateNavigationProgress(smoothedPosition);
+
+        // Verificar transição multi-andar (fire and forget)
+        final userLatLng = LatLng(smoothedPosition.latitude, smoothedPosition.longitude);
+        checkMultiFloorTransition(userLatLng).catchError((e) {
+          print('[LocationService] Erro ao verificar transição multi-andar: $e');
+        });
+
+        // --- NOVO: Recalcular rota se usuário sair da rota ---
+        if (_shouldRecalculateRoute(smoothedPosition)) {
+          print('[LocationService] Usuário saiu da rota, recalculando...');
+          await _recalculateRoute();
+        }
       }
     }, onError: (error) {
       print('Erro no stream de localização: $error');
-      error.value = 'Erro ao rastrear localização: $error';
+      this.error.value = 'Erro ao rastrear localização: $error';
     });
+  }
+
+  // Detecta se o usuário está fora da rota por mais de X metros
+  bool _shouldRecalculateRoute(Position position, {double threshold = 15.0}) {
+    final path = activeRoute.value?.path;
+    if (activeRoute.value == null || path == null || path.isEmpty) return false;
+    final userLatLng = LatLng(position.latitude, position.longitude);
+    double minDist = double.infinity;
+    for (final routePoint in path) {
+      final dist = Distance().as(LengthUnit.Meter, userLatLng, routePoint);
+      if (dist < minDist) minDist = dist;
+    }
+    return minDist > threshold;
+  }
+
+  // Recalcula a rota do usuário até o destino atual
+  Future<void> _recalculateRoute() async {
+    if (activeRoute.value == null) return;
+    final path = activeRoute.value?.path;
+    final destination = (path != null && path.isNotEmpty)
+        ? path.last
+        : null;
+    if (destination == null) return;
+    final provider = _locationProvider;
+    final start = LatLng(currentPosition.value!.latitude, currentPosition.value!.longitude);
+    final end = LatLng(destination.latitude, destination.longitude);
+    final route = await provider.getNavigationRoute(start, end);
+    if (route != null) {
+      activeRoute.value = route;
+      navigationProgress.value = NavigationProgress(
+        currentStepIndex: 0,
+        distanceToNextStep: route.steps.isNotEmpty ? route.steps[0].distance : 0,
+        distanceToDestination: route.totalDistance,
+        estimatedTimeRemaining: route.estimatedDuration,
+      );
+      print('[LocationService] Rota recalculada com sucesso.');
+    } else {
+      print('[LocationService] Falha ao recalcular rota.');
+    }
   }
 
   Future<void> fetchLocations({String? type, String? block, int? floor, String? search}) async {
@@ -290,14 +708,8 @@ class LocationService extends GetxService {
       isLoading.value = true;
       error.value = '';
       
-      final result = await _locationProvider.getAllLocations(
-        type: type,
-        block: block,
-        floor: floor,
-        search: search
-      );
-      
-      locations.value = result;
+      final result = await _locationProvider.getAllStructures();
+      locations.clear();
     } catch (e) {
       error.value = 'Erro ao carregar localizações: $e';
     } finally {
@@ -310,8 +722,7 @@ class LocationService extends GetxService {
       isLoading.value = true;
       error.value = '';
       
-      final result = await _locationProvider.getBlocks();
-      blocks.value = result;
+      blocks.value = [];
     } catch (e) {
       error.value = 'Erro ao carregar blocos: $e';
     } finally {
@@ -394,7 +805,6 @@ class LocationService extends GetxService {
         estimatedTimeRemaining: route.estimatedDuration
       );
       
-      // Limpar buffer e reiniciar rastreamento com configurações de navegação
       _positionBuffer.clear();
       _startLocationTracking();
       
@@ -409,18 +819,81 @@ class LocationService extends GetxService {
   }
   
   void stopNavigation() {
+    _clearNavigationState();
     isNavigating.value = false;
-    activeRoute.value = null;
-    navigationProgress.value = null;
     _positionBuffer.clear();
     
-    // Reiniciar rastreamento com configurações normais
-    _startLocationTracking();
+    // Limpar apenas rooms, manter estrutura para evitar re-trigger do WebSocket
+    roomsOnFloor.clear();
+    
+    // Remover flag de navegação da estrutura atual
+    if (nearestStructure.value != null) {
+      final updated = Map<String, dynamic>.from(nearestStructure.value!);
+      updated.remove('isNavigating');
+      nearestStructure.value = updated;
+    }
+  }
+  
+  /// Limpa estado de navegação
+  void _clearNavigationState() {
+    activeRoute.value = null;
+    navigationProgress.value = null;
+    multiFloorStage.value = MultiFloorNavigationStage.none;
+    _pathToStairs.clear();
+    _pathFromStairs.clear();
+    _stairsTransition.clear();
+    _floorPaths.clear();
+    _stairTransitions.clear();
+    _destinationFloor = null;
+    _navigationStructureId = null;
+    _destinationRoomId = null;
+    
+    if (nearestStructure.value != null) {
+      final updated = Map<String, dynamic>.from(nearestStructure.value!);
+      updated.remove('isNavigating');
+      nearestStructure.value = updated;
+    }
   }
   
   void _stopLocationTracking() {
     _positionStreamSubscription?.cancel();
     _positionStreamSubscription = null;
+  }
+  
+  /// Limpa todos os dados de navegação e localização (usado no logout)
+  void clearAllData() {
+    // Para rastreamento
+    _stopLocationTracking();
+    
+    // Limpa navegação ativa
+    isNavigating.value = false;
+    activeRoute.value = null;
+    navigationProgress.value = null;
+    
+    // Limpa dados multi-andar
+    multiFloorStage.value = MultiFloorNavigationStage.none;
+    _pathToStairs.clear();
+    _pathFromStairs.clear();
+    _stairsTransition.clear();
+    _destinationFloor = null;
+    _navigationStructureId = null;
+    
+    // Limpa posição e buffers
+    currentPosition.value = null;
+    _positionBuffer.clear();
+    _lastValidPosition = null;
+    _lastUpdateTime = null;
+    
+    // Limpa listas de dados
+    locations.clear();
+    blocks.clear();
+    upcomingClasses.clear();
+    roomsOnFloor.clear();
+    nearestStructure.value = null;
+    
+    // Reseta estados
+    isLoading.value = false;
+    error.value = '';
   }
   
   void _updateNavigationProgress(Position position) {
@@ -477,6 +950,52 @@ class LocationService extends GetxService {
   double get currentAccuracy => _currentAccuracy.value;
   bool get isUserStationary => _isUserStationary;
   int get positionBufferSize => _positionBuffer.length;
+
+  /// Retorna a rota para um andar específico (se disponível)
+  List<LatLng>? getPathForFloor(int floor) {
+    if (_floorPaths.isEmpty) {
+      print('[LocationService] ⚠️ floorPaths está vazio');
+      return null;
+    }
+    
+    try {
+      // Procurar o andar específico
+      for (var floorPath in _floorPaths) {
+        if (floorPath['floor'] == floor) {
+          final path = floorPath['path'] as List<LatLng>?;
+          return path;
+        }
+      }
+      print('[LocationService] Andares disponíveis: ${_floorPaths.map((fp) => fp['floor']).toList()}');
+      return null;
+    } catch (e) {
+      print('[LocationService] ❌ Erro ao buscar rota do andar $floor: $e');
+      return null;
+    }
+  }
+
+  /// Retorna a transição de escada entre dois andares (se disponível)
+  Map<String, dynamic>? getStairTransition(int fromFloor, int toFloor) {
+    if (_stairTransitions.isEmpty) return null;
+    
+    try {
+      for (var transition in _stairTransitions) {
+        if (transition['fromFloor'] == fromFloor && transition['toFloor'] == toFloor) {
+          return transition;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('[LocationService] Erro ao buscar transição $fromFloor→$toFloor: $e');
+      return null;
+    }
+  }
+
+  /// Retorna todos os andares pelos quais a rota passa
+  List<int> getRouteFloors() {
+    if (_floorPaths.isEmpty) return [];
+    return _floorPaths.map((fp) => fp['floor'] as int).toList();
+  }
 
   @override
   void onClose() {
