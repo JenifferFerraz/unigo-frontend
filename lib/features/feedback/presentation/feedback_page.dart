@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../data/services/feedback_service.dart';
 import '../../../routes/app_routes.dart';
 
 class FeedbackPage extends StatefulWidget {
@@ -138,8 +139,8 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
           _questionTitle('4. As instruções do aplicativo foram claras para chegar ao destino.'),
           _likertRow(_q4, (v) => setState(() { _q4 = v; _updateProgress(); })),
         ],
-      );
-    }
+                );
+              }
     // Step 2
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +166,7 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
   }
 
   Widget _buildStepContentStep4() {
-    InputDecoration _inputDecoration() => InputDecoration(
+    InputDecoration inputDecoration() => InputDecoration(
           filled: true,
           fillColor: const Color(0xFFF1F1F1),
           border: OutlineInputBorder(
@@ -189,31 +190,130 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
         _questionTitle('15. O que mais te agradou na funcionalidade de mapeamento?'),
         TextField(
           controller: _q15Controller,
-          decoration: _inputDecoration(),
+          decoration: inputDecoration(),
           maxLines: 4,
         ),
         const SizedBox(height: 16),
         _questionTitle('16. Que dificuldade você encontrou ao usar o UniGo (se houver)?'),
         TextField(
           controller: _q16Controller,
-          decoration: _inputDecoration(),
+          decoration: inputDecoration(),
           maxLines: 4,
         ),
         const SizedBox(height: 16),
         _questionTitle('17. Você acredita que essa ferramenta pode ajudar novos alunos ou visitantes? Por quê?'),
         TextField(
           controller: _q17Controller,
-          decoration: _inputDecoration(),
+          decoration: inputDecoration(),
           maxLines: 4,
         ),
       ],
     );
   }
 
-  void _submitFeedback() {
-    // TODO: integrar com backend
-    Get.snackbar('Obrigado!', 'Feedback enviado com sucesso', snackPosition: SnackPosition.BOTTOM);
-    Get.back();
+  /// Mapeia o vínculo do formato do frontend para o formato esperado pelo backend
+  /// O backend espera: 'aluno', 'visitante', 'funcionario' (minúsculas)
+  String _mapVinculoToEnum(String v) {
+    switch (v) {
+      case 'aluno':
+        return 'aluno';
+      case 'visitante':
+        return 'visitante';
+      case 'funcionario':
+        return 'funcionario';
+      default:
+        return 'visitante';
+    }
+  }
+
+  Future<void> _submitFeedback() async {
+    try {
+      // Mostra indicador de carregamento
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
+
+      final service = Get.isRegistered<FeedbackService>()
+          ? Get.find<FeedbackService>()
+          : Get.put(FeedbackService());
+
+      // Prepara o payload no formato esperado pelo backend
+      // Mapeia as respostas do questionário para os campos do DTO do backend
+      final payload = <String, dynamic>{
+        // Parte 1: Perfil
+        'vinculo': _mapVinculoToEnum(_vinculo!), // 'aluno', 'visitante', 'funcionario'
+        'jaUsouAppInterno': _jaUsouAppInterno!,
+        
+        // Parte 1: Navegação Básica (Likert 1-5)
+        'identificarLocalizacao': _q3!, // Q3: "Eu consegui identificar facilmente o ponto onde eu estava no mapa"
+        'instrucoesClaras': _q4!, // Q4: "As instruções do aplicativo foram claras para chegar ao destino"
+        
+        // Parte 2: Usabilidade e Interface (Likert 1-5)
+        'representacaoFiel': _q5!, // Q5: "A representação do campus estava fiel à realidade"
+        'trajetoFacilSeguir': _q6!, // Q6: "O trajeto indicado pelo UniGo foi fácil de seguir"
+        'facilUsar': _q7!, // Q7: "O aplicativo foi fácil de usar, mesmo sem instruções"
+        'designClaro': _q8!, // Q8: "As cores, ícones e textos facilitaram o entendimento"
+        'interacaoSemDificuldade': _q9!, // Q9: "Consegui interagir com o mapa sem dificuldades"
+        
+        // Parte 3: Eficiência e Satisfação (Likert 1-5)
+        'tempoRazoavel': _q10!, // Q10: "O aplicativo indicou corretamente o local que eu estava procurando"
+        'confiancaDestino': _q11!, // Q11: "A rota apresentada correspondia ao trajeto real"
+        'recomendaria': _q12!, // Q12: "Eu me senti confiante ao usar o aplicativo"
+        'voltariaUsar': _q13!, // Q13: "O aplicativo facilitou minha experiência de locomoção"
+        'satisfacaoGeral': _q14!, // Q14: "Eu recomendaria o UniGo para outros alunos ou visitantes"
+        
+        // Parte 4: Perguntas Abertas (opcionais)
+        if (_q15Controller.text.trim().isNotEmpty) 
+          'oQueAgradou': _q15Controller.text.trim(), // Q15: "O que mais te agradou na funcionalidade de mapeamento?"
+        if (_q16Controller.text.trim().isNotEmpty) 
+          'dificuldadesEncontradas': _q16Controller.text.trim(), // Q16: "Que dificuldade você encontrou ao usar o UniGo?"
+        if (_q17Controller.text.trim().isNotEmpty) 
+          'sugestoesMelhoria': _q17Controller.text.trim(), // Q17: "Você acredita que essa ferramenta pode ajudar novos alunos ou visitantes? Por quê?"
+      };
+
+      // Envia o feedback para o backend
+      final ok = await service.createFeedback(payload);
+      
+      // Fecha o diálogo de carregamento
+      Get.back();
+
+      if (ok) {
+        Get.snackbar(
+          'Obrigado!',
+          'Feedback enviado com sucesso',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: const Color(0xFF3C3CC0),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+        await Future.delayed(const Duration(seconds: 3));
+        Get.offAllNamed(AppRoutes.HOME, arguments: {'visitor': true});
+      } else {
+        Get.snackbar(
+          'Erro',
+          'Não foi possível enviar seu feedback. Tente novamente.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+        );
+      }
+    } catch (e) {
+      // Fecha o diálogo de carregamento se ainda estiver aberto
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      
+      Get.snackbar(
+        'Erro',
+        'Ocorreu um erro ao enviar seu feedback: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+      );
+    }
   }
 
   Widget _buildStepContentStep3() {
@@ -267,6 +367,7 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
             builder: (context, constraints) {
               const double maxContentWidth = 360;
               final bool isMobile = constraints.maxWidth < 600;
+              
               if (isMobile) {
                 // Mobile: todo o espaço abaixo do AppBar deve ser branco e preenchido, com cantos arredondados
                 return Container(
@@ -285,83 +386,80 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
                   ),
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: maxContentWidth),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4.0, bottom: 12.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: AnimatedBuilder(
-                            animation: _progressAnimation,
-                            builder: (context, child) {
-                              return LinearProgressIndicator(
-                                value: _progressAnimation.value,
-                                minHeight: 6,
-                                backgroundColor: const Color(0xFFE5E5E5),
-                                color: const Color(0xFF3C3CC0),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 50), // Gap between progress and legend
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Text(
-                          '1 - Discordo totalmente\n5 - Concordo totalmente',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 11,
-                            fontStyle: FontStyle.italic,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 50), // Gap between legend and content
-                      _currentStep == 2
-                          ? _buildStepContentStep3()
-                          : _currentStep == 3
-                              ? _buildStepContentStep4()
-                              : _buildStepContent(),
-                      const SizedBox(height: 50), // Gap between content and button
-                      Center(
-                        child: SizedBox(
-                          width: 220,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_currentStep < 3) {
-                                if (_canContinue) {
-                                  setState(() => _currentStep += 1);
-                                }
-                              } else {
-                                _submitFeedback();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _canContinue ? const Color(0xFF3C3CC0) : const Color(0xFFD9D9D9),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0, bottom: 12.0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: AnimatedBuilder(
+                                animation: _progressAnimation,
+                                builder: (context, child) {
+                                  return LinearProgressIndicator(
+                                    value: _progressAnimation.value,
+                                    minHeight: 6,
+                                    backgroundColor: const Color(0xFFE5E5E5),
+                                    color: const Color(0xFF3C3CC0),
+                                  );
+                                },
+                              ),
                             ),
-                            child: Text(_currentStep == 3 ? 'ENVIAR' : 'PRÓXIMO'),
                           ),
-                        ),
-                      ),
-                          ],
-                        ),
+                          const SizedBox(height: 8), // Espaço entre progresso e legenda
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              '1 - Discordo totalmente\n5 - Concordo totalmente',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12), // Espaço entre legenda e conteúdo
+                          _currentStep == 2
+                              ? _buildStepContentStep3()
+                              : _currentStep == 3
+                                  ? _buildStepContentStep4()
+                                  : _buildStepContent(),
+                          const SizedBox(height: 20), // Espaço entre conteúdo e botão
+                          Center(
+                            child: SizedBox(
+                              width: 220,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (_currentStep < 3) {
+                                    if (_canContinue) {
+                                      setState(() => _currentStep += 1);
+                                    }
+                                  } else {
+                                    _submitFeedback();
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _canContinue ? const Color(0xFF3C3CC0) : const Color(0xFFD9D9D9),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                child: Text(_currentStep == 3 ? 'ENVIAR' : 'PRÓXIMO'),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 );
-              }
-
-              // Telas maiores: mantém o card centralizado ocupando apenas o necessário
-              final double containerWidth = maxContentWidth + 32; // 16px padding cada lado
-              return Align(
+              } else {
+                // Telas maiores: mantém o card centralizado ocupando apenas o necessário
+                const double containerWidth = maxContentWidth + 32; // 16px padding cada lado
+                return Align(
                 alignment: Alignment.topCenter,
                 child: Container(
                   width: containerWidth,
@@ -451,6 +549,7 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
                   ),
                 ),
               );
+            }
             },
           ),
         ),

@@ -69,6 +69,11 @@ abstract class AppRoutes {
       binding: HomeBinding(),
     ),
     GetPage(
+      name: FEEDBACK,
+      page: () => const FeedbackPage(),
+      // Disponível também para visitantes; mantém argumentos para voltar ao modo visitante
+    ),
+    GetPage(
       name: SCHEDULE,
       page: () => SchedulePage(),
       middlewares: [AuthMiddleware()],
@@ -92,11 +97,6 @@ abstract class AppRoutes {
     GetPage(
       name: ADMIN_UPLOAD,
       page: () => const AdminUploadPage(),
-    ),
-    GetPage(
-      name: FEEDBACK,
-      page: () => const FeedbackPage(),
-      // Disponível também para visitantes; mantém argumentos para voltar ao modo visitante
     ),
   ];
 }

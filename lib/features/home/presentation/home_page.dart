@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/atoms/map/map_widget.dart';
 import '../../../data/services/location_service.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../routes/app_routes.dart';
 import './components/sidebar.dart';
 import './components/location_search.dart';
@@ -32,7 +33,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-  final isVisitor = (Get.arguments != null && Get.arguments['visitor'] == true);
+    // Verifica se é visitante pelos argumentos OU se não há usuário autenticado
+    final hasVisitorArg = (Get.arguments != null && Get.arguments['visitor'] == true);
+    final AuthService? authService = Get.isRegistered<AuthService>() ? Get.find<AuthService>() : null;
+    final hasNoUser = authService?.currentUser.value == null;
+    final isVisitor = hasVisitorArg || hasNoUser;
 
     LocationService? controller;
     try {
