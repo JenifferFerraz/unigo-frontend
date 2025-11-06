@@ -51,41 +51,40 @@ class AccessSelectionPage extends StatelessWidget {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(24),
                                   ),
-                                  side: const BorderSide(color: AppColors.primary, width: 2),
+                                  child: const Text('PRIMEIRO ACESSO', style: TextStyle(fontWeight: FontWeight.bold)),
                                 ),
-                                child: const Text('PRIMEIRO ACESSO', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () => Get.offAllNamed(AppRoutes.LOGIN),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(double.infinity, 48),
-                                ),
-                                child: const Text('ENTRAR', style: TextStyle(fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton(
-                                onPressed: () => Get.offAllNamed(AppRoutes.HOME, arguments: {'visitor': true}),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(double.infinity, 48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () => Get.offAllNamed(AppRoutes.LOGIN),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(double.infinity, 48),
                                   ),
-                                  side: const BorderSide(color: Colors.white, width: 2),
+                                  child: const Text('ENTRAR', style: TextStyle(fontWeight: FontWeight.bold)),
                                 ),
-                                child: const Text('VISITANTE', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: () => Get.offAllNamed(AppRoutes.HOME, arguments: {'visitor': true}),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(double.infinity, 48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
+                                    side: const BorderSide(color: Colors.white, width: 2),
+                                  ),
+                                  child: const Text('VISITANTE', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),

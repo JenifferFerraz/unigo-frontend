@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../data/services/feedback_service.dart';
 import '../../../routes/app_routes.dart';
 import '../../../data/services/feedback_service.dart';
 import '../../../data/services/auth_service.dart';
@@ -165,8 +166,8 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
           _questionTitle('4. As instruções do aplicativo foram claras para chegar ao destino.'),
           _likertRow(_q4, (v) => setState(() { _q4 = v; _updateProgress(); })),
         ],
-      );
-    }
+                );
+              }
     // Step 2
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +193,7 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
   }
 
   Widget _buildStepContentStep4() {
-    InputDecoration _inputDecoration() => InputDecoration(
+    InputDecoration inputDecoration() => InputDecoration(
           filled: true,
           fillColor: const Color(0xFFF1F1F1),
           border: OutlineInputBorder(
@@ -216,21 +217,21 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
         _questionTitle('15. O que mais te agradou na funcionalidade de mapeamento?'),
         TextField(
           controller: _q15Controller,
-          decoration: _inputDecoration(),
+          decoration: inputDecoration(),
           maxLines: 4,
         ),
         const SizedBox(height: 16),
         _questionTitle('16. Que dificuldade você encontrou ao usar o UniGo (se houver)?'),
         TextField(
           controller: _q16Controller,
-          decoration: _inputDecoration(),
+          decoration: inputDecoration(),
           maxLines: 4,
         ),
         const SizedBox(height: 16),
         _questionTitle('17. Você acredita que essa ferramenta pode ajudar novos alunos ou visitantes? Por quê?'),
         TextField(
           controller: _q17Controller,
-          decoration: _inputDecoration(),
+          decoration: inputDecoration(),
           maxLines: 4,
         ),
       ],
@@ -396,6 +397,7 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
             builder: (context, constraints) {
               const double maxContentWidth = 360;
               final bool isMobile = constraints.maxWidth < 600;
+              
               if (isMobile) {
                 // Mobile: todo o espaço abaixo do AppBar deve ser branco e preenchido, com cantos arredondados
                 return Container(
@@ -414,83 +416,80 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
                   ),
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: maxContentWidth),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4.0, bottom: 12.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: AnimatedBuilder(
-                            animation: _progressAnimation,
-                            builder: (context, child) {
-                              return LinearProgressIndicator(
-                                value: _progressAnimation.value,
-                                minHeight: 6,
-                                backgroundColor: const Color(0xFFE5E5E5),
-                                color: const Color(0xFF3C3CC0),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 50), // Gap between progress and legend
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Text(
-                          '1 - Discordo totalmente\n5 - Concordo totalmente',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 11,
-                            fontStyle: FontStyle.italic,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 50), // Gap between legend and content
-                      _currentStep == 2
-                          ? _buildStepContentStep3()
-                          : _currentStep == 3
-                              ? _buildStepContentStep4()
-                              : _buildStepContent(),
-                      const SizedBox(height: 50), // Gap between content and button
-                      Center(
-                        child: SizedBox(
-                          width: 220,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_currentStep < 3) {
-                                if (_canContinue) {
-                                  setState(() => _currentStep += 1);
-                                }
-                              } else {
-                                _submitFeedback();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _canContinue ? const Color(0xFF3C3CC0) : const Color(0xFFD9D9D9),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0, bottom: 12.0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: AnimatedBuilder(
+                                animation: _progressAnimation,
+                                builder: (context, child) {
+                                  return LinearProgressIndicator(
+                                    value: _progressAnimation.value,
+                                    minHeight: 6,
+                                    backgroundColor: const Color(0xFFE5E5E5),
+                                    color: const Color(0xFF3C3CC0),
+                                  );
+                                },
+                              ),
                             ),
-                            child: Text(_currentStep == 3 ? 'ENVIAR' : 'PRÓXIMO'),
                           ),
-                        ),
-                      ),
-                          ],
-                        ),
+                          const SizedBox(height: 8), // Espaço entre progresso e legenda
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text(
+                              '1 - Discordo totalmente\n5 - Concordo totalmente',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12), // Espaço entre legenda e conteúdo
+                          _currentStep == 2
+                              ? _buildStepContentStep3()
+                              : _currentStep == 3
+                                  ? _buildStepContentStep4()
+                                  : _buildStepContent(),
+                          const SizedBox(height: 20), // Espaço entre conteúdo e botão
+                          Center(
+                            child: SizedBox(
+                              width: 220,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (_currentStep < 3) {
+                                    if (_canContinue) {
+                                      setState(() => _currentStep += 1);
+                                    }
+                                  } else {
+                                    _submitFeedback();
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _canContinue ? const Color(0xFF3C3CC0) : const Color(0xFFD9D9D9),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                ),
+                                child: Text(_currentStep == 3 ? 'ENVIAR' : 'PRÓXIMO'),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 );
-              }
-
-              // Telas maiores: mantém o card centralizado ocupando apenas o necessário
-              final double containerWidth = maxContentWidth + 32; // 16px padding cada lado
-              return Align(
+              } else {
+                // Telas maiores: mantém o card centralizado ocupando apenas o necessário
+                const double containerWidth = maxContentWidth + 32; // 16px padding cada lado
+                return Align(
                 alignment: Alignment.topCenter,
                 child: Container(
                   width: containerWidth,
@@ -593,6 +592,7 @@ class _FeedbackPageState extends State<FeedbackPage> with TickerProviderStateMix
                   ),
                 ),
               );
+            }
             },
           ),
         ),

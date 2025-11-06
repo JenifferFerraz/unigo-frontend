@@ -5,7 +5,7 @@ class MapService extends GetxService {
     // Posição inicial do mapa centralizada em São Paulo
   final Rx<CameraPosition> initialPosition = Rx<CameraPosition>(
     const CameraPosition(
-      target: LatLng(−16.294387, −48.944379),
+      target: LatLng(-16.294387, -48.944379),
       zoom: 17,
     ),
   );
