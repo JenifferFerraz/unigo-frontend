@@ -18,38 +18,41 @@ class AccessSelectionPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
                 child: Container(
                   width: 370,
-                  decoration: BoxDecoration(
-           
-                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(height: 32),
                       Image.asset('assets/images/Logo.png', height: 100),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
                         child: Image.asset(
                           'assets/images/Iniciar.png', 
                           height: 180,
                           fit: BoxFit.cover,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Column(
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () => Get.offAllNamed(AppRoutes.REGISTER),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: AppColors.primary,
-                                  minimumSize: const Size(double.infinity, 48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
+                      Transform.translate(
+                        offset: const Offset(0, -1),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () => Get.offAllNamed(AppRoutes.REGISTER),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: AppColors.primary,
+                                    minimumSize: const Size(double.infinity, 48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
+                                    side: const BorderSide(color: AppColors.primary, width: 2),
                                   ),
                                   child: const Text('PRIMEIRO ACESSO', style: TextStyle(fontWeight: FontWeight.bold)),
                                 ),

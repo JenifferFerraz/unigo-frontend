@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../data/services/auth_service.dart';
 import '../../../../routes/app_routes.dart';
-import '../../../../core/atoms/loading_screen.dart';
 
 class Sidebar extends StatelessWidget {
   Widget _buildMenuItem({required IconData icon, required String title, required VoidCallback onTap}) {
@@ -107,14 +106,8 @@ class Sidebar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ElevatedButton.icon(
-                  onPressed: () async {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => const LoadingScreen(message: 'Saindo...'),
-                    );
-                    await _authService.logout();
-                    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+                  onPressed: () {
+                    authService?.logout();
                     Get.offAllNamed(AppRoutes.LOGIN);
                   },
                   icon: const Icon(Icons.logout),
