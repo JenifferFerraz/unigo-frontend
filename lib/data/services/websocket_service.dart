@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -9,102 +8,139 @@ import '../../core/config/env_service.dart';
 import 'location_service.dart';
 
 class WebSocketService extends GetxService {
-  late WebSocketChannel channel;
-  RxBool isConnected = false.obs;
+  WebSocketChannel? _channel;
+  final RxBool isConnected = false.obs;
+  String? _sessionId;
+  
+  static const _sessionKey = 'session_id';
 
-  Future<String> getOrCreateSessionId() async {
+  Future<String> _ensureSessionId() async {
+    if (_sessionId != null) return _sessionId!;
+    
     final prefs = await SharedPreferences.getInstance();
-    var sessionId = prefs.getString('session_id');
-    if (sessionId == null) {
-      sessionId = const Uuid().v4();
-      await prefs.setString('session_id', sessionId);
+    _sessionId = prefs.getString(_sessionKey) ?? const Uuid().v4();
+    
+    if (!prefs.containsKey(_sessionKey)) {
+      await prefs.setString(_sessionKey, _sessionId!);
     }
-    return sessionId;
+    
+    return _sessionId!;
   }
 
   Future<void> connect() async {
-    final sessionId = await getOrCreateSessionId();
-    final url = '${EnvService.socketUrl.replaceFirst('http', 'ws')}/ws?room=$sessionId';
-    channel = WebSocketChannel.connect(Uri.parse(url));
-    isConnected.value = true;
-    channel.stream.listen((message) {
-      _handleMessage(message);
-    }, onDone: () {
+    if (isConnected.value) return;
+    
+    try {
+      final sessionId = await _ensureSessionId();
+      final wsUrl = EnvService.socketUrl.replaceFirst('http', 'ws');
+      final uri = Uri.parse('$wsUrl/ws?room=$sessionId');
+      
+      _channel = WebSocketChannel.connect(uri);
+      isConnected.value = true;
+      
+      _channel!.stream.listen(
+        _handleIncomingMessage,
+        onDone: () => isConnected.value = false,
+        onError: (_) => isConnected.value = false,
+      );
+      
+      print('[WebSocket] Conectado com sessão: $sessionId');
+    } catch (e) {
+      print('[WebSocket] Erro ao conectar: $e');
       isConnected.value = false;
-    }, onError: (error) {
-      isConnected.value = false;
-    });
-  }
-
-  void send(dynamic data) {
-    if (isConnected.value) {
-      channel.sink.add(jsonEncode(data));
     }
   }
-  
+
   void sendPosition({
     required List<double> position,
     int? structureId,
     int? floor,
   }) {
-    final data = {
+    if (!isConnected.value) return;
+    
+    _send({
       'position': position,
-      'structureId': structureId,
-      'floor': floor,
-    };
-    send(data);
+      if (structureId != null) 'structureId': structureId,
+      if (floor != null) 'floor': floor,
+    });
   }
 
-  void _handleMessage(dynamic message) {
-    final data = jsonDecode(message);
-    
-    if (!Get.isRegistered<LocationService>()) {
-      return;
-    }
-    
-    final locationService = Get.find<LocationService>();
-    final isNavigating = locationService.isNavigating.value;
-    
-    if (data['type'] == 'roomsOnFloor') {
-      if (!isNavigating && data['rooms'] is List) {
-        locationService.roomsOnFloor.assignAll(List<Map<String, dynamic>>.from(data['rooms']));
-      } else if (isNavigating) {
-      }
-    } else if (data['type'] == 'nearestStructure') {
-      if (!isNavigating) {
-        locationService.nearestStructure.value = data['structure'];
-      } 
+  void _send(Map<String, dynamic> data) {
+    try {
+      _channel?.sink.add(jsonEncode(data));
+    } catch (e) {
+      print('[WebSocket] Erro ao enviar: $e');
     }
   }
 
-  /// Limpa dados da sessão atual (salas, estrutura, etc.)
-  void clearSessionData() {
-    if (Get.isRegistered<LocationService>()) {
+  void _handleIncomingMessage(dynamic message) {
+    try {
+      final data = jsonDecode(message);
+      final type = data['type'] as String?;
+
+      if (!Get.isRegistered<LocationService>()) return;
+
       final locationService = Get.find<LocationService>();
-      locationService.roomsOnFloor.clear();
-      locationService.nearestStructure.value = null;
+
+      if (locationService.isNavigating.value && type != 'navigationUpdate') {
+        return;
+      }
+
+      switch (type) {
+        case 'roomsOnFloor':
+          _handleRoomsUpdate(data, locationService);
+          break;
+        case 'nearestStructure':
+          _handleStructureUpdate(data, locationService);
+          break;
+        case 'error':
+          print('[WebSocket] Erro do servidor: ${data['message']}');
+          break;
+      }
+    } catch (e) {
+      print('[WebSocket] Erro ao processar mensagem: $e');
     }
   }
 
-  /// Desconecta WebSocket e limpa todos os dados
+  void _handleRoomsUpdate(Map<String, dynamic> data, LocationService service) {
+    final rooms = data['rooms'];
+    if (rooms is List) {
+      service.roomsOnFloor.assignAll(rooms.cast<Map<String, dynamic>>());
+    }
+  }
+
+  void _handleStructureUpdate(Map<String, dynamic> data, LocationService service) {
+    final structure = data['structure'];
+    if (structure != null) {
+      service.nearestStructure.value = structure;
+    }
+  }
+
+  void clearSessionData() {
+    if (!Get.isRegistered<LocationService>()) return;
+    
+    final service = Get.find<LocationService>();
+    service.roomsOnFloor.clear();
+    service.nearestStructure.value = null;
+  }
+
   Future<void> disconnect() async {
     try {
       clearSessionData();
-      
       if (isConnected.value) {
-        await channel.sink.close(status.goingAway);
+        await _channel?.sink.close(status.goingAway);
+        _channel = null;
         isConnected.value = false;
       }
     } catch (e) {
-      print('[WebSocketService] Erro ao desconectar: $e');
-      isConnected.value = false;
+      print('[WebSocket] Erro ao desconectar: $e');
     }
   }
 
-  /// Remove sessionId do SharedPreferences (usado no logout)
   Future<void> clearSessionId() async {
+    _sessionId = null;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('session_id');
+    await prefs.remove(_sessionKey);
   }
 
   @override
