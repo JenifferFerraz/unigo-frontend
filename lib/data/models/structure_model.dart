@@ -1,3 +1,5 @@
+import 'package:latlong2/latlong.dart';
+
 
 class Structure {
   final int id;
@@ -6,7 +8,7 @@ class Structure {
   final dynamic geometry;
   final dynamic centroid;
   final List<int>? floors;
-  final int? structureId; // Adicionado para suportar rooms
+  final int? structureId;
 
   Structure({
     required this.id,
@@ -28,5 +30,17 @@ class Structure {
       floors: json['floors'] != null ? List<int>.from(json['floors']) : null,
       structureId: json['structureId'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'geometry': geometry,
+      'centroid': centroid,
+      'floors': floors,
+      'structureId': structureId,
+    };
   }
 }
