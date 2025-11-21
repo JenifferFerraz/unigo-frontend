@@ -1,151 +1,218 @@
-import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
-import '../models/location_model.dart';
+import '../../core/config/env_service.dart';
 import '../models/structure_model.dart';
 import '../models/navigation_model.dart';
-import '../services/storage_service.dart';
-import '../../core/config/env_service.dart';
 
-class LocationProvider {
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: EnvService.apiBaseUrl,
-    responseType: ResponseType.json,
-  ));
+class LocationProvider extends GetConnect {
+  final String _baseUrl = EnvService.apiBaseUrl;
 
-  Future<List<Structure>> searchStructures(String query) async {
+  LocationProvider() {
+    httpClient.baseUrl = _baseUrl;
+    httpClient.timeout = const Duration(seconds: 30);
+    
+  }
+
+  // ============ UNIFIED ROUTES API ============
+
+
+    Future<RouteResponse?> getCompleteRoute({
+    required List<double> start,
+    required int destinationRoomId,
+    TransportMode mode = TransportMode.walking,
+  }) async {
     try {
-      // Busca de estruturas é pública, não requer autenticação (visitantes podem usar)
-      final response = await _dio.get(
-        '/room/all',
-        queryParameters: {'search': query},
-      );
-      if (response.statusCode == 200) {
-        return (response.data as List)
-            .map((item) => Structure.fromJson(item))
-            .toList();
+      if (start.length != 2) {
+        return null;
       }
-      throw 'Failed to search structures: ${response.statusCode}';
-    } catch (e) {
-      throw 'Error searching structures: $e';
+      List<double> validStart = [start[0], start[1]];
+      final requestBody = {
+        'start': validStart,
+        'destinationRoomId': destinationRoomId,
+        'mode': mode == TransportMode.driving ? 'driving' : 'walking',
+      };
+      final response = await post(
+        '/routes/complete',
+        requestBody,
+      );
+      if (response.statusCode == 200 && response.body != null) {
+        final routeResponse = RouteResponse.fromJson(response.body);
+        if (routeResponse.success && routeResponse.route != null) {
+          return routeResponse;
+        } else {
+          return null;
+        }
+      }
+      return null;
+    } catch (e, stack) {
+      return null;
     }
   }
+  /// Busca apenas rota interna (legacy - mantido para compatibilidade)
+  /// Endpoint: POST /api/routes/internal
+  Future<Map<String, dynamic>?> getInternalRoute({
+    required int structureId,
+    required int floor,
+    required List<double> start,
+    int? roomId,
+  }) async {
+    try {
+      final body = {
+        'structureId': structureId,
+        'floor': floor,
+        'start': start,
+        if (roomId != null) 'roomId': roomId,
+      };
+      final response = await post('/routes/internal', body);
+      if (response.statusCode == 200 && response.body != null) {
+        return response.body;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ============ STRUCTURES ============
+
+  /// Busca todas as estruturas
   Future<List<Structure>> getAllStructures() async {
     try {
-      final storageService = Get.find<StorageService>();
-      final token = storageService.token.value;
-      if (token == null) {
-        throw 'No authentication token found';
+      final response = await get('/structures');
+      if (response.statusCode == 200 && response.body != null) {
+        final List<dynamic> data = response.body;
+        return data.map((json) => Structure.fromJson(json)).toList();
       }
-      final response = await _dio.get(
-        '/room/all',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-      if (response.statusCode == 200) {
-        return (response.data as List)
-            .map((item) => Structure.fromJson(item))
-            .toList();
-      }
-      throw 'Failed to load structures';
+      return [];
     } catch (e) {
-      throw 'Error fetching structures: $e';
+      return [];
     }
   }
 
-  // ...existing code for getBlocks, getUpcomingClasses, getNavigationRoute...
-  Future<List<Location>> searchLocations(String query) async {
+  /// Busca estruturas por query
+  Future<List<Structure>> searchStructures(String query) async {
     try {
-      final storageService = Get.find<StorageService>();
-      final token = storageService.token.value;
-      if (token == null) {
-        print('Error: No authentication token found');
-        throw 'No authentication token found';
+      final response = await get('/room/all?search=$query');
+      if (response.statusCode == 200 && response.body != null) {
+        final List<dynamic> data = response.body;
+        return data.map((json) => Structure.fromJson(json)).toList();
       }
-
-      print('Searching locations with query: $query');
-      final response = await _dio.get(
-        '/locations/search',
-        queryParameters: {'q': query},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      print('Search response status: ${response.statusCode}');
-      print('Search response data: ${response.data}');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List;
-        return data.map((item) {
-          try {
-            return Location.fromJson(item);
-          } catch (e) {
-            print('Error parsing location: $e');
-            print('Location data: $item');
-            rethrow;
-          }
-        }).toList();
-      }
-
-      print('Search failed with status: ${response.statusCode}');
-      throw 'Failed to search locations: ${response.statusCode}';
-    } on DioException catch (e) {
-      print('Dio error: ${e.type}');
-      print('Dio response: ${e.response?.data}');
-      print('Dio status code: ${e.response?.statusCode}');
-      throw 'Error searching locations: ${e.message}';
+      return [];
     } catch (e) {
-      print('Unexpected error: $e');
-      throw 'Error searching locations: $e';
+      return [];
     }
   }
-  Future<List<ClassNotification>> getUpcomingClasses() async {
+
+  /// Busca estrutura por ID
+  Future<Structure?> getStructureById(int id) async {
     try {
-      final storageService = Get.find<StorageService>();
-      final token = storageService.token.value;
-      if (token == null) {
-        throw 'No authentication token found';
-      }
-
-      final response = await _dio.get(
-        '/notifications/upcoming-classes',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        return (response.data as List)
-            .map((item) => ClassNotification.fromJson(item))
-            .toList();
-      }
-      throw 'Failed to load upcoming classes';
-    } catch (e) {
-      throw 'Error fetching upcoming classes: $e';
-    }
-  }
-  Future<NavigationRoute?> getNavigationRoute(LatLng start, LatLng end) async {
-    try {
-      final storageService = Get.find<StorageService>();
-      final token = storageService.token.value;
-      if (token == null) {
-        throw 'No authentication token found';
-      }
-
-      final response = await _dio.get(
-        '/navigation/route',
-        queryParameters: {
-          'startLat': start.latitude,
-          'startLng': start.longitude,
-          'endLat': end.latitude,
-          'endLng': end.longitude,
-        },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      if (response.statusCode == 200) {
-        return NavigationRoute.fromJson(response.data);
+      final response = await get('/structures/$id');
+      if (response.statusCode == 200 && response.body != null) {
+        return Structure.fromJson(response.body);
       }
       return null;
     } catch (e) {
-      print('Error getting navigation route: $e');
       return null;
     }
+  }
+
+  // ============ ROOMS ============
+
+  /// Busca salas de uma estrutura em um andar específico
+  Future<List<Map<String, dynamic>>> getRoomsByFloor({
+    required int structureId,
+    required int floor,
+  }) async {
+    try {
+      final response = await get(
+        '/structures/$structureId/floors/$floor/rooms',
+      );
+      if (response.statusCode == 200 && response.body != null) {
+        final List<dynamic> data = response.body;
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ============ EXTERNAL ROUTES ============
+
+  /// Lista todas as rotas externas
+  Future<List<Map<String, dynamic>>> getExternalRoutes({
+    TransportMode? mode,
+  }) async {
+    try {
+      final modeParam = mode != null 
+          ? '?mode=${mode == TransportMode.driving ? 'driving' : 'walking'}'
+          : '';
+      final response = await get('/routes/external$modeParam');
+      if (response.statusCode == 200 && response.body != null) {
+        final List<dynamic> data = response.body;
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ============ HEALTH CHECK ============
+
+  /// Verifica saúde da API
+  Future<bool> healthCheck() async {
+    try {
+      final response = await get('/routes/health');
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ============ LEGACY METHODS (Compatibilidade) ============
+
+  /// Método legado - usar getCompleteRoute() para novas implementações
+  @Deprecated('Use getCompleteRoute() para rotas unificadas')
+  Future<NavigationRoute?> getNavigationRoute(
+    LatLng start,
+    LatLng end,
+  ) async {
+    
+    try {
+      final distance = Distance().as(
+        LengthUnit.Meter,
+        start,
+        end,
+      );
+      return NavigationRoute(
+        segments: [
+          RouteSegment(
+            type: RouteSegmentType.internal,
+            mode: TransportMode.walking,
+            path: [start, end],
+            distance: distance,
+            description: 'Caminho direto',
+          ),
+        ],
+        totalDistance: distance,
+        estimatedTime: distance / 1.4 / 60,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Método legado para buscar localizações
+  @Deprecated('Use searchStructures()')
+  Future<List<dynamic>> searchLocations(String query) async {
+    final structures = await searchStructures(query);
+    return structures.map((s) => s.toJson()).toList();
+  }
+
+  /// Método legado para próximas aulas
+  @Deprecated('Funcionalidade movida para outro serviço')
+  Future<List<dynamic>> getUpcomingClasses() async {
+    return [];
   }
 }

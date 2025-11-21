@@ -140,7 +140,8 @@ class AuthService extends GetxService {
         if (Get.isRegistered<LocationService>()) {
           await Get.delete<LocationService>();
         }
-        await Get.putAsync(() => LocationService().init());
+        final locationService = Get.put(LocationService());
+        await locationService.requestLocationPermission();
         
         // 🔥 Inicializa e conecta WebSocket após login bem-sucedido
         print('[AuthService] Inicializando WebSocket...');
@@ -308,35 +309,50 @@ class AuthService extends GetxService {
     }
   }
 
-  Future<void> handleLocationPermission() async {
-    try {
-      // Aguarda LocationService estar registrado
-      LocationService? locationService;
-      if (Get.isRegistered<LocationService>()) {
-        locationService = Get.find<LocationService>();
-      } else {
-        locationService = await Get.putAsync(() => LocationService().init());
-      }
-      final hasPermission = await locationService?.requestLocationPermission();
-      if (hasPermission == true) {
-        Get.offAllNamed('/home');
-      } else {
-        Get.snackbar(
-          'Erro',
-          'É necessário permitir o acesso à localização para usar o aplicativo',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
-    } catch (e) {
+
+Future<void> handleLocationPermission() async {
+  try {
+    LocationService? locationService;
+    
+    if (Get.isRegistered<LocationService>()) {
+      locationService = Get.find<LocationService>();
+    } else {
+      locationService = Get.put(LocationService());
+    }
+    
+    if (locationService == null) {
       Get.snackbar(
         'Erro',
-        'Ocorreu um erro ao solicitar permissão de localização',
+        'Não foi possível inicializar o serviço de localização',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+    
+    final hasPermission = await locationService.requestLocationPermission();
+    
+    if (hasPermission == true) {
+      Get.offAllNamed('/home');
+    } else {
+      Get.snackbar(
+        'Erro',
+        'É necessário permitir o acesso à localização para usar o aplicativo',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
     }
+  } catch (e) {
+    print('[AuthService] Erro ao solicitar permissão: $e');
+    Get.snackbar(
+      'Erro',
+      'Ocorreu um erro ao solicitar permissão de localização',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
   }
+}
 }

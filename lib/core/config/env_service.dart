@@ -1,19 +1,24 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EnvService {
-  static Future<void> init() async {
-    await dotenv.load(fileName: ".env");
-  }
+  static Future<void> init() async {}
 
-  static String get apiBaseUrl => dotenv.env['API_URL'] ?? 'http://localhost:3000';
-  static String get socketUrl => kIsWeb
-      ? 'ws://localhost:3000'
-      : (dotenv.env['SOCKET_URL'] ?? 'ws://localhost:3000');
-  
-  static String get googleMapsApiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
-  
-  static String get appName => dotenv.env['APP_NAME'] ?? 'UniGo'; 
-  static String get appEnv => dotenv.env['APP_ENV'] ?? 'development';
-} 
+  static String get apiBaseUrl =>
+      const String.fromEnvironment('API_URL', defaultValue: 'http://localhost:3000');
+
+  static String get socketUrl =>
+      const String.fromEnvironment('SOCKET_URL', defaultValue: 'ws://localhost:3000');
+
+  static String get cloudName =>
+      const String.fromEnvironment('CLOUDINARY_CLOUD_NAME', defaultValue: 'Teste_UniGo');
+
+  static String get cloudKey =>
+      const String.fromEnvironment('CLOUDINARY_API_KEY', defaultValue: '');
+
+  static String get appName =>
+      const String.fromEnvironment('APP_NAME', defaultValue: 'UniGo');
+
+  static String get appEnv =>
+      const String.fromEnvironment('APP_ENV', defaultValue: 'development');
+}
