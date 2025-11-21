@@ -3,6 +3,7 @@ import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/terms_page.dart';
 import '../features/auth/presentation/register_page.dart';
 import '../features/auth/presentation/reset_password_page.dart';
+import '../features/auth/presentation/confirm_reset_password_page.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/home/home_binding.dart';
 import '../data/middleware/auth_middleware.dart';
@@ -64,7 +65,19 @@ abstract class AppRoutes {
     ),
     GetPage(
       name: RESET_PASSWORD,
-      page: () => const ResetPasswordPage(),
+      page: () {
+        // Verifica se há token na query string
+        final uri = Uri.tryParse(Uri.base.toString());
+        if (uri != null && uri.queryParameters.containsKey('token')) {
+          final token = uri.queryParameters['token'];
+          if (token != null && token.isNotEmpty) {
+            // Mostra a página de confirmação se tiver token
+            return ConfirmResetPasswordPage();
+          }
+        }
+        // Mostra a página de solicitação se não tiver token
+        return const ResetPasswordPage();
+      },
       middlewares: [GuestMiddleware()],
     ),
     GetPage(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/atoms/inputs/text_input.dart';
 import '../../../core/atoms/buttons/primary_button.dart';
 import '../../../data/services/auth_service.dart';
@@ -77,15 +76,29 @@ class ResetPasswordPage extends GetView<AuthService> {
                         text: 'Enviar Link de Recuperação',
                         isLoading: controller.isLoading.value,
                         onPressed: () async {
-                          final success = await controller.resetPassword(
+                          if (emailController.text.isEmpty) {
+                            Get.snackbar(
+                              'Campo Obrigatório',
+                              'Por favor, informe seu email',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.orange.withOpacity(0.8),
+                              colorText: Colors.white,
+                            );
+                            return;
+                          }
+                          
+                          final success = await controller.requestPasswordReset(
                             email: emailController.text,
                           );
                           
                           if (success) {
                             Get.snackbar(
                               'Sucesso',
-                              'Email de recuperação enviado com sucesso',
+                              'Se este email for cadastrado, verifique sua caixa de entrada para receber as instruções de redefinição de senha',
                               snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: Colors.green.withOpacity(0.8),
+                              colorText: Colors.white,
+                              duration: const Duration(seconds: 5),
                             );
                             Get.offAllNamed(AppRoutes.LOGIN);
                           }

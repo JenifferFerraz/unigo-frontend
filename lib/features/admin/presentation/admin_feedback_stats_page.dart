@@ -419,19 +419,24 @@ class _AdminFeedbackStatsPageState extends State<AdminFeedbackStatsPage> {
     return ElevatedButton.icon(
       onPressed: () async {
         try {
-          // TODO: Implementar download do CSV
-          Get.snackbar(
-            'Download',
-            'Funcionalidade de download CSV em desenvolvimento',
-            snackPosition: SnackPosition.BOTTOM,
-          );
+          await _feedbackService.exportStatsCsv();
+          if (mounted) {
+            Get.snackbar(
+              'Sucesso',
+              'Arquivo CSV exportado com sucesso',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.green.shade100,
+            );
+          }
         } catch (e) {
-          Get.snackbar(
-            'Erro',
-            'Erro ao exportar dados',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red.shade100,
-          );
+          if (mounted) {
+            Get.snackbar(
+              'Erro',
+              'Erro ao exportar dados: $e',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.red.shade100,
+            );
+          }
         }
       },
       style: ElevatedButton.styleFrom(

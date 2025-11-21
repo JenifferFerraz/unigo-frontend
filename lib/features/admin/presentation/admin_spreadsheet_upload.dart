@@ -1,10 +1,8 @@
-import 'dart:io';
-
-import 'package:dio/dio.dart';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../data/admin_upload_service.dart';
+import '../../home/presentation/components/sidebar.dart';
 
 class AdminSpreadsheetUpload extends StatefulWidget {
   final String title;
@@ -36,6 +34,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       type: FileType.custom,
       allowMultiple: false,
       allowedExtensions: ['xlsx', 'xls', 'csv'],
+      withData: true, 
     );
     if (result == null) return;
 
@@ -47,26 +46,37 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
     });
 
     try {
-      final path = file.path;
-      if (path == null) return;
+      // Com withData: true, os bytes sempre estarão disponíveis
+      // Isso funciona tanto na web quanto no mobile/desktop
+      final bytes = file.bytes;
+      
+      if (bytes == null) {
+        setState(() {
+          _statusMessage = 'Erro: não foi possível ler o arquivo. Certifique-se de que o arquivo foi selecionado corretamente.';
+        });
+        return;
+      }
 
       if ((file.extension ?? '').toLowerCase() == 'csv') {
-        final content = await File(path).readAsString();
+        final content = String.fromCharCodes(bytes);
         final lines = content.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
         if (lines.isNotEmpty) {
+          final headerParts = lines.first.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
           setState(() {
-            _preview = 'Linhas: ${lines.length}\nCabeçalho: ${lines.first}';
+            _preview = 'Linhas: ${lines.length}\nCabeçalho: ${headerParts.join(', ')}';
           });
         }
       } else {
         try {
-          final bytes = await File(path).readAsBytes();
           final excel = Excel.decodeBytes(bytes);
           final sheet = excel.tables.keys.isNotEmpty ? excel.tables[excel.tables.keys.first] : null;
           if (sheet != null && sheet.rows.isNotEmpty) {
-            final header = sheet.rows.first.map((c) => c?.value ?? '').join(', ');
+            final headerParts = sheet.rows.first
+                .map((c) => c?.value?.toString().trim() ?? '')
+                .where((s) => s.isNotEmpty)
+                .toList();
             setState(() {
-              _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: $header';
+              _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: ${headerParts.join(', ')}';
             });
           }
         } catch (_) {
@@ -89,13 +99,39 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
     });
 
     try {
+      // Verificar se o arquivo tem bytes antes de tentar fazer upload
+      if (_pickedFile!.bytes == null || _pickedFile!.bytes!.isEmpty) {
+        setState(() {
+          _statusMessage = 'Erro: arquivo não tem dados. Tente selecionar o arquivo novamente.';
+        });
+        return;
+      }
+
+      // Criar uma cópia do arquivo apenas com bytes para evitar qualquer acesso a path
+      // Isso previne erros na web onde path é sempre null
+      final fileBytes = _pickedFile!.bytes;
+      if (fileBytes == null || fileBytes.isEmpty) {
+        setState(() {
+          _statusMessage = 'Erro: arquivo não tem dados. Tente selecionar o arquivo novamente.';
+        });
+        return;
+      }
+
+      // Criar um PlatformFile "limpo" apenas com os dados necessários
+      final cleanFile = PlatformFile(
+        name: _pickedFile!.name,
+        size: _pickedFile!.size,
+        bytes: fileBytes,
+        // Não incluir path para evitar erros na web
+      );
+
       final service = AdminUploadService();
       final endpoint = widget.uploadEndpoint.startsWith('/')
           ? widget.uploadEndpoint
           : '/${widget.uploadEndpoint}';
       final response = await service.uploadSpreadsheet(
         endpoint: endpoint,
-        file: _pickedFile!,
+        file: cleanFile,
       );
 
       // Extrair informações do resultado
@@ -109,9 +145,17 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
             'Total: $totalRows | Sucesso: $successCount | Erros: $errorCount';
       });
     } catch (e) {
-      setState(() {
-        _statusMessage = 'Erro ao enviar arquivo: $e';
-      });
+      // Tratar erro específico do FilePicker sobre path
+      final errorMessage = e.toString();
+      if (errorMessage.contains('path') && errorMessage.contains('null')) {
+        setState(() {
+          _statusMessage = 'Erro: problema ao acessar arquivo. Por favor, selecione o arquivo novamente usando o botão "Anexar Arquivo".';
+        });
+      } else {
+        setState(() {
+          _statusMessage = 'Erro ao enviar arquivo: $e';
+        });
+      }
     } finally {
       setState(() {
         _isUploading = false;
@@ -124,7 +168,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
 
     try {
       final service = AdminUploadService();
-      final response = await service.downloadTemplate(widget.templateType!);
+      await service.downloadTemplate(widget.templateType!);
 
       // Aqui você pode implementar o download do arquivo
       // Para web, use package:universal_html ou file_saver
@@ -146,7 +190,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
 
   @override
   Widget build(BuildContext context) {
-    const appBlue = Color(0xFF3C3CC0);
+const appBlue = Color(0xFF3C3CC0);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: appBlue,
@@ -167,6 +211,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
         ),
         centerTitle: true,
       ),
+      drawer: Sidebar(),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
