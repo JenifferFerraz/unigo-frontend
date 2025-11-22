@@ -1,6 +1,8 @@
-  import 'dart:io';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+// TODO: Ajuste os caminhos abaixo de acordo com a estrutura do seu projeto
 import '../../../core/config/env_service.dart';
 import '../../../storage/token_storage.dart';
 
@@ -16,31 +18,31 @@ class AdminUploadService {
       final token = await TokenStorage.getToken();
       if (token == null) throw Exception('Token não encontrado');
 
-      final filePath = file.path;
-      if (filePath == null) {
-        // Para web, usar bytes ao invés de path
-        if (file.bytes != null) {
-          final formData = FormData.fromMap({
-            'file': MultipartFile.fromBytes(file.bytes!, filename: file.name),
-          });
+      MultipartFile multipartFile;
 
-          final url = EnvService.apiBaseUrl + endpoint;
-          return await _dio.post(
-            url,
-            data: formData,
-            options: Options(
-              headers: {
-                'Content-Type': 'multipart/form-data',
-                'Authorization': 'Bearer $token',
-              },
-            ),
-          );
+      if (kIsWeb) {
+        // Web: usar bytes
+        if (file.bytes == null) {
+          throw Exception('Bytes do arquivo não disponíveis na web');
         }
-        throw Exception('Arquivo não disponível');
+        multipartFile = MultipartFile.fromBytes(
+          file.bytes!,
+          filename: file.name,
+        );
+      } else {
+        // Mobile/Desktop: usar path
+        final filePath = file.path;
+        if (filePath == null) {
+          throw Exception('Caminho do arquivo não disponível');
+        }
+        multipartFile = await MultipartFile.fromFile(
+          filePath,
+          filename: file.name,
+        );
       }
 
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: file.name),
+        'file': multipartFile,
       });
 
       final url = EnvService.apiBaseUrl + endpoint;
@@ -116,4 +118,3 @@ class AdminUploadService {
     }
   }
 }
-

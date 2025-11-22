@@ -1,40 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../data/models/event_model.dart';
+import '../../home/presentation/components/sidebar.dart';
+import '../data/event_api_service.dart';
 
-class EventsPage extends StatelessWidget {
+class EventsPage extends StatefulWidget {
   const EventsPage({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    // Mock data - substitua por dados reais da API
-    final events = [
-      Event(
-        id: 1,
-        title: 'Puzzle Week - Engenharia de Software - 2025/2',
-        city: 'Anápolis / Goiás',
-        location: 'UniEVANGÉLICA - Universidade Evangélica de Goiás',
-        date: 'terça-feira, 05 de agosto de 2025',
-      ),
-      Event(
-        id: 2,
-        title: 'Conferência Ciência e Propósito: o Universo, a Vida e a Missão de Cristo - AIG',
-        city: 'Anápolis / Goiás',
-        location: 'Evento presencial em UniEVANGÉLICA - Universidade Evangélica de Goiás',
-        date: '11 ago • 2025 • 08:15 > 14 ago • 2025 • 23:59',
-      ),
-    ];
+  State<EventsPage> createState() => _EventsPageState();
+}
 
+class _EventsPageState extends State<EventsPage> {
+  late Future<List<Event>> _eventsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _eventsFuture = EventApiService().fetchEvents();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
+      drawer: Sidebar(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF3C3CC0),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
         ),
         actions: [
           Padding(
@@ -69,12 +70,25 @@ class EventsPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: events.length,
-                itemBuilder: (context, index) {
-                  final event = events[index];
-                  return EventCard(event: event);
+              child: FutureBuilder<List<Event>>(
+                future: _eventsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Erro ao carregar eventos'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('Nenhum evento encontrado'));
+                  }
+                  final events = snapshot.data!;
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: events.length,
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      return EventCard(event: event);
+                    },
+                  );
                 },
               ),
             ),
@@ -119,37 +133,42 @@ class EventCard extends StatelessWidget {
             const SizedBox(height: 8),
             _buildInfoRow(Icons.calendar_today, 'Data: ${event.date}'),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Ação de inscrição
-                  Get.snackbar(
-                    'Inscrição',
-                    'Inscrição em ${event.title}',
-                    snackPosition: SnackPosition.BOTTOM,
+            if (event.link != null && event.link!.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    // Abrir o link do evento
+                    if (await canLaunchUrl(Uri.parse(event.link!))) {
+                      await launchUrl(Uri.parse(event.link!), mode: LaunchMode.externalApplication);
+                    } else {
+                      Get.snackbar(
+                        'Erro',
+                        'Não foi possível abrir o link',
+                        snackPosition: SnackPosition.BOTTOM,
+                        backgroundColor: const Color(0xFF3C3CC0),
+                        colorText: Colors.white,
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3C3CC0),
-                    colorText: Colors.white,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3C3CC0),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Inscreva-se',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  child: const Text(
+                    'Inscreva-se',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),

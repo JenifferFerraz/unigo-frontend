@@ -195,41 +195,45 @@ class LocationService extends GetxService {
 
   // ============ NAVEGAÇÃO (NOVO MÉTODO) ============
 
-  Future<void> fetchCompleteRoute({
-    required int destinationRoomId,
-    TransportMode mode = TransportMode.walking,
-  }) async {
-    if (currentPosition.value == null) {
-      error.value = 'Posição atual não disponível';
+Future<void> fetchCompleteRoute({
+  required int destinationRoomId,
+  TransportMode mode = TransportMode.walking,
+}) async {
+  // ✅ Verifica se há localização disponível
+  final hasLocation = currentPosition.value != null;
+  
+  isLoading.value = true;
+  
+  try {
+    List<double>? startPosition;
+    
+    // Só envia 'start' se houver localização
+    if (hasLocation) {
+      final pos = currentPosition.value!;
+      startPosition = [pos.longitude, pos.latitude];
+      isNavigating.value = true; // Só marca como navegando se há localização
+    }
+
+    final routeResponse = await _provider.getCompleteRoute(
+      start: startPosition, // Pode ser null
+      destinationRoomId: destinationRoomId,
+      mode: mode,
+    );
+
+    if (routeResponse == null) {
+      error.value = 'Erro ao buscar dados';
+      isNavigating.value = false;
       return;
     }
 
-    isLoading.value = true;
-    isNavigating.value = true;
-    
-    try {
-      final pos = currentPosition.value!;
-      final routeResponse = await _provider.getCompleteRoute(
-        start: [pos.longitude, pos.latitude],
-        destinationRoomId: destinationRoomId,
-        mode: mode,
-      );
-
-      if (routeResponse == null || routeResponse.route == null) {
-        error.value = 'Erro ao buscar rota';
-        isNavigating.value = false;
-        return;
-      }
-
-      final route = routeResponse.route!;
-      activeRoute.value = route;
-      _originalRoute.value = route; // Salva a rota completa original
+    // ✅ Verifica se é apenas estrutura (sem rota)
+    if (routeResponse.isStructureOnly) {
+      print('[LocationService] ✓ Modo: Apenas estrutura (sem navegação)');
       
-      // Salva estrutura e roomsByFloor retornados com a rota
+      // Salva estrutura e rooms para visualização
       if (routeResponse.structure != null) {
         final structureData = Map<String, dynamic>.from(routeResponse.structure!);
         
-        // Inclui roomsByFloor na estrutura para facilitar acesso
         if (routeResponse.roomsByFloor != null) {
           structureData['roomsByFloor'] = routeResponse.roomsByFloor;
         }
@@ -237,62 +241,96 @@ class LocationService extends GetxService {
         nearestStructure.value = structureData;
       }
       
-      // Inicializa roomsOnFloor com o PRIMEIRO andar percorrido pela rota
-      // Sempre mostra apenas um andar por vez para evitar sobreposição
-      // A rota completa (externa + internas) será mostrada, mas apenas os rooms do andar atual
+      // Carrega rooms do primeiro andar
       if (routeResponse.roomsByFloor != null) {
-        final floorsTraversed = route.floorsTraversed;
-        if (floorsTraversed.isNotEmpty) {
-          // Sempre usa o primeiro andar percorrido pela rota
-          final firstFloor = floorsTraversed.first;
+        final floors = (routeResponse.structure?['floors'] as List?)
+            ?.cast<int>()
+            .toList() ?? [];
+        
+        if (floors.isNotEmpty) {
+          final firstFloor = floors.first;
           final floorKey = firstFloor.toString();
           final rooms = routeResponse.roomsByFloor![floorKey];
-          if (rooms is List) {
-            // Filtra novamente para garantir que apenas rooms do primeiro andar sejam carregados
-            // Isso evita problemas se o backend retornar rooms de múltiplos andares
-            final filteredRooms = rooms
-                .where((room) {
-                  final roomFloor = room['floor'];
-                  return roomFloor != null && roomFloor == firstFloor;
-                })
-                .toList();
-            
-            // Limpa antes de adicionar para garantir que não há rooms de outros andares
+          
+          if (rooms != null) {
             roomsOnFloor.clear();
-            roomsOnFloor.assignAll(filteredRooms.cast<Map<String, dynamic>>());
-            
-            final roomsByFloorDebug = <int, int>{};
-            for (final room in filteredRooms) {
-              final roomFloor = room['floor'];
-              if (roomFloor != null) {
-                roomsByFloorDebug[roomFloor] = (roomsByFloorDebug[roomFloor] ?? 0) + 1;
-              }
-            }
+            roomsOnFloor.assignAll(rooms);
+            print('[LocationService] ✓ Carregadas ${rooms.length} salas do andar $firstFloor');
           }
         }
       }
       
-      if (route.isMultiFloor) {
-        multiFloorStage.value = MultiFloorNavigationStage.toStairs;
-      } else {
-        multiFloorStage.value = MultiFloorNavigationStage.none;
+      isNavigating.value = false;
+      return;
+    }
+
+    // ✅ Rota completa (com navegação)
+    final route = routeResponse.route;
+    if (route == null) {
+      error.value = 'Rota não disponível';
+      isNavigating.value = false;
+      return;
+    }
+
+
+    activeRoute.value = route;
+    _originalRoute.value = route;
+    
+    // Salva estrutura e roomsByFloor
+    if (routeResponse.structure != null) {
+      final structureData = Map<String, dynamic>.from(routeResponse.structure!);
+      
+      if (routeResponse.roomsByFloor != null) {
+        structureData['roomsByFloor'] = routeResponse.roomsByFloor;
       }
       
-      navigationProgress.value = NavigationProgress(
-        currentSegmentIndex: 0,
-        distanceToNextSegment: route.segments.first.distance,
-        distanceToDestination: route.totalDistance,
-        estimatedTimeRemaining: (route.estimatedTime * 60).toInt(),
-      );
-      
-    } catch (e) {
-      error.value = 'Erro ao buscar rota: $e';
-      isNavigating.value = false;
-    } finally {
-      isLoading.value = false;
+      nearestStructure.value = structureData;
     }
+    
+    // Inicializa rooms do primeiro andar percorrido
+    if (routeResponse.roomsByFloor != null) {
+      final floorsTraversed = route.floorsTraversed;
+      if (floorsTraversed.isNotEmpty) {
+        final firstFloor = floorsTraversed.first;
+        final floorKey = firstFloor.toString();
+        final rooms = routeResponse.roomsByFloor![floorKey];
+        
+        if (rooms != null) {
+          final filteredRooms = rooms
+              .where((room) {
+                final roomFloor = room['floor'];
+                return roomFloor != null && roomFloor == firstFloor;
+              })
+              .toList();
+          
+          roomsOnFloor.clear();
+          roomsOnFloor.assignAll(filteredRooms);
+          
+        }
+      }
+    }
+    
+    if (route.isMultiFloor) {
+      multiFloorStage.value = MultiFloorNavigationStage.toStairs;
+    } else {
+      multiFloorStage.value = MultiFloorNavigationStage.none;
+    }
+    
+    navigationProgress.value = NavigationProgress(
+      currentSegmentIndex: 0,
+      distanceToNextSegment: route.segments.first.distance,
+      distanceToDestination: route.totalDistance,
+      estimatedTimeRemaining: (route.estimatedTime * 60).toInt(),
+    );
+    
+  } catch (e) {
+    print('[LocationService] ❌ Erro: $e');
+    error.value = 'Erro ao buscar rota: $e';
+    isNavigating.value = false;
+  } finally {
+    isLoading.value = false;
   }
-
+}
   // ============ NAVEGAÇÃO (MÉTODO LEGADO - COMPATIBILIDADE) ============
 
   Future<void> fetchAndSetInternalRoute({

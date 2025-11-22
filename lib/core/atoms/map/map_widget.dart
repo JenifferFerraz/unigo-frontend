@@ -1,3 +1,4 @@
+import 'dart:math' show cos, sin;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -79,14 +80,12 @@ class _MapWidgetState extends State<MapWidget> {
     return PolygonLayer(polygons: polygons);
   }
 
-  /// 🔥 CORREÇÃO: Layer de rota com TODOS os pontos (curvas)
   Widget _buildRouteLayer() {
     final routePoints = _getRoutePointsForCurrentFloor();
 
     if (routePoints.isEmpty) {
       return const SizedBox.shrink();
     }
-
 
     return AnimatedRouteLayer(routePoints: routePoints);
   }
@@ -125,6 +124,7 @@ class _MapWidgetState extends State<MapWidget> {
     return polygons;
   }
 
+  /// 🔥 CORREÇÃO: Agora aceita tanto Polygon quanto Point
   List<Polygon> _buildRoomPolygons() {
     final rooms = _locationService.roomsOnFloor;
     final activeRoute = _locationService.activeRoute.value;
@@ -135,8 +135,6 @@ class _MapWidgetState extends State<MapWidget> {
     }
 
     final currentFloor = _getCurrentFloor();
-    
-
 
     for (final room in rooms) {
       final roomFloor = room['floor'];
@@ -146,36 +144,77 @@ class _MapWidgetState extends State<MapWidget> {
       }
 
       final geometry = room['geometry'];
-      if (geometry == null || geometry['type'] != 'Polygon') continue;
+      if (geometry == null) continue;
 
-      final coordinates = geometry['coordinates'];
-      if (coordinates == null || coordinates is! List || coordinates.isEmpty) continue;
-
+      final geometryType = geometry['type'];
       final isDestination = room['id'] == activeRoute?.destination;
 
-      for (var ring in coordinates) {
-        if (ring == null || ring is! List || ring.isEmpty) continue;
-        
-        final points = _parseCoordinates(ring);
-        if (points.length < 3) continue;
-        
-        polygons.add(
-          Polygon(
-            points: points,
-            color: isDestination
-                ? const Color(0xFF3C3CC0).withOpacity(0.6)
-                : const Color(0xFFededed),
-            borderColor: isDestination
-                ? const Color(0xFF3C3CC0)
-                : const Color(0xFFAAB9C9),
-            borderStrokeWidth: isDestination ? 4.0 : 1.2,
-            isFilled: true,
-          ),
-        );
+      if (geometryType == 'Point') {
+        final coordinates = geometry['coordinates'];
+        if (coordinates == null || coordinates is! List || coordinates.length < 2) continue;
+
+        try {
+          final centerPoint = LatLng(coordinates[1], coordinates[0]);
+          final pointPolygon = _createPolygonFromPoint(centerPoint, isDestination);
+          polygons.add(pointPolygon);
+        } catch (e) {
+          continue;
+        }
+      } 
+      else if (geometryType == 'Polygon') {
+        final coordinates = geometry['coordinates'];
+        if (coordinates == null || coordinates is! List || coordinates.isEmpty) continue;
+
+        for (var ring in coordinates) {
+          if (ring == null || ring is! List || ring.isEmpty) continue;
+          
+          final points = _parseCoordinates(ring);
+          if (points.length < 3) continue;
+          
+          polygons.add(
+            Polygon(
+              points: points,
+              color: isDestination
+                  ? const Color(0xFF3C3CC0).withOpacity(0.6)
+                  : const Color(0xFFededed),
+              borderColor: isDestination
+                  ? const Color(0xFF3C3CC0)
+                  : const Color(0xFFAAB9C9),
+              borderStrokeWidth: isDestination ? 4.0 : 1.2,
+              isFilled: true,
+            ),
+          );
+        }
       }
     }
 
     return polygons;
+  }
+
+  /// 🔥 NOVO: Cria um polígono circular a partir de um ponto
+  Polygon _createPolygonFromPoint(LatLng center, bool isDestination) {
+    const double radiusInDegrees = 0.00003;
+    const int numPoints = 16;
+    
+    final points = <LatLng>[];
+    for (int i = 0; i < numPoints; i++) {
+      final angle = (i * 2 * 3.141592653589793) / numPoints;
+      final lat = center.latitude + (radiusInDegrees * cos(angle));
+      final lng = center.longitude + (radiusInDegrees * sin(angle));
+      points.add(LatLng(lat, lng));
+    }
+
+    return Polygon(
+      points: points,
+      color: isDestination
+          ? const Color(0xFF3C3CC0).withOpacity(0.6)
+          : const Color(0xFFededed),
+      borderColor: isDestination
+          ? const Color(0xFF3C3CC0)
+          : const Color(0xFFAAB9C9),
+      borderStrokeWidth: isDestination ? 4.0 : 1.2,
+      isFilled: true,
+    );
   }
 
   List<Marker> _buildRoomMarkers() {
@@ -187,7 +226,6 @@ class _MapWidgetState extends State<MapWidget> {
 
     final currentFloor = _getCurrentFloor();
 
-
     for (final room in rooms) {
       final roomFloor = room['floor'];
       
@@ -195,26 +233,42 @@ class _MapWidgetState extends State<MapWidget> {
         continue;
       }
 
-      final centroid = room['centroid'];
-      if (centroid == null || centroid['type'] != 'Point') continue;
+      LatLng? roomPoint;
 
-      final coordinates = centroid['coordinates'];
-      if (coordinates == null || coordinates is! List || coordinates.length < 2) continue;
-
-      try {
-        final point = LatLng(coordinates[1], coordinates[0]);
-        final isDestination = room['id'] == activeRoute?.destination;
-        final roomName = room['name'] ?? '';
-
-        if (isDestination) {
-          markers.add(_buildDestinationMarker(point));
+      final geometry = room['geometry'];
+      if (geometry != null && geometry['type'] == 'Point') {
+        final coordinates = geometry['coordinates'];
+        if (coordinates != null && coordinates is List && coordinates.length >= 2) {
+          try {
+            roomPoint = LatLng(coordinates[1], coordinates[0]);
+          } catch (e) {
+          }
         }
+      }
 
-        if (roomName.isNotEmpty) {
-          markers.add(_buildRoomNameMarker(point, roomName, isDestination));
+      if (roomPoint == null) {
+        final centroid = room['centroid'];
+        if (centroid == null || centroid['type'] != 'Point') continue;
+
+        final coordinates = centroid['coordinates'];
+        if (coordinates == null || coordinates is! List || coordinates.length < 2) continue;
+
+        try {
+          roomPoint = LatLng(coordinates[1], coordinates[0]);
+        } catch (e) {
+          continue;
         }
-      } catch (e) {
-        continue;
+      }
+
+      final isDestination = room['id'] == activeRoute?.destination;
+      final roomName = room['name'] ?? '';
+
+      if (isDestination) {
+        markers.add(_buildDestinationMarker(roomPoint));
+      }
+
+      if (roomName.isNotEmpty) {
+        markers.add(_buildRoomNameMarker(roomPoint, roomName, isDestination));
       }
     }
 
@@ -262,7 +316,6 @@ class _MapWidgetState extends State<MapWidget> {
     );
   }
 
-  /// 🔥 CORREÇÃO: Busca escadas de TODOS os andares, não apenas atual
   List<Marker> _buildStairsMarkers() {
     final activeRoute = _locationService.activeRoute.value;
     if (activeRoute == null) return [];
@@ -273,13 +326,11 @@ class _MapWidgetState extends State<MapWidget> {
     final markers = <Marker>[];
     final addedStairs = <String>{};
 
-
-  // Busca em todos os segmentos de transição
+    // Busca em todos os segmentos de transição
     for (final segment in activeRoute.segments) {
       if (segment.type == RouteSegmentType.transition) {
         if (segment.path.isEmpty) continue;
 
-        // Extrai os andares da descrição
         final description = segment.description ?? '';
         final regex = RegExp(r'Andar (\d+) → (\d+)');
         final match = regex.firstMatch(description);
@@ -289,8 +340,6 @@ class _MapWidgetState extends State<MapWidget> {
           final toFloor = int.tryParse(match.group(2) ?? '');
           
           if (fromFloor == currentFloor || toFloor == currentFloor) {
-            // Usa o primeiro ponto se o andar atual for origem
-            // Usa o último ponto se o andar atual for destino
             final stairPoint = fromFloor == currentFloor 
                 ? segment.path.first 
                 : segment.path.last;
@@ -300,7 +349,6 @@ class _MapWidgetState extends State<MapWidget> {
             if (addedStairs.contains(stairKey)) {
               continue;
             }
-
             
             markers.add(
               Marker(
@@ -348,9 +396,7 @@ class _MapWidgetState extends State<MapWidget> {
       }
     }
 
-  // Fallback: Se não encontrou nenhuma escada, busca nos segmentos internos
     if (markers.isEmpty) {
-      
       for (final segment in activeRoute.segments) {
         if (segment.type == RouteSegmentType.internal && 
             segment.floor == currentFloor &&
@@ -362,7 +408,6 @@ class _MapWidgetState extends State<MapWidget> {
             final stairKey = '${stairPoint.latitude.toStringAsFixed(6)},${stairPoint.longitude.toStringAsFixed(6)}';
             
             if (!addedStairs.contains(stairKey)) {
-              
               markers.add(
                 Marker(
                   point: stairPoint,
@@ -439,7 +484,6 @@ class _MapWidgetState extends State<MapWidget> {
     }
   }
 
-  
   List<LatLng> _getRoutePointsForCurrentFloor() {
     final activeRoute = _locationService.activeRoute.value;
     if (activeRoute == null) {
@@ -447,8 +491,6 @@ class _MapWidgetState extends State<MapWidget> {
     }
 
     final currentFloor = _getCurrentFloor();
-
-
     final filteredPoints = <LatLng>[];
 
     for (final segment in activeRoute.segments) {
@@ -457,18 +499,18 @@ class _MapWidgetState extends State<MapWidget> {
       }
     }
 
-    
     if (currentFloor == null) {
       return filteredPoints;
     }
 
-    
+    // Adiciona pontos internos do andar atual
     for (final segment in activeRoute.segments) {
       if (segment.type == RouteSegmentType.internal && segment.floor == currentFloor) {
         filteredPoints.addAll(segment.path);
       }
     }
 
+    // Adiciona pontos de transição (escadas)
     for (final segment in activeRoute.segments) {
       if (segment.type == RouteSegmentType.transition && segment.path.isNotEmpty) {
         final description = segment.description ?? '';
@@ -485,7 +527,7 @@ class _MapWidgetState extends State<MapWidget> {
       }
     }
 
-  return filteredPoints;
+    return filteredPoints;
   }
 
   int? _getCurrentFloor() {
@@ -514,7 +556,6 @@ class _MapWidgetState extends State<MapWidget> {
       }
     }
 
-    
     return null;
   }
 

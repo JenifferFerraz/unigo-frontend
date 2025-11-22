@@ -1,9 +1,12 @@
-import 'dart:io';
-
-import 'package:dio/dio.dart';
+import 'dart:io' show File, Platform; 
+import 'dart:typed_data';
+import 'package:dio/dio.dart';  
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
+import 'package:universal_html/html.dart' as html;
 import '../data/admin_upload_service.dart';
 
 class AdminSpreadsheetUpload extends StatefulWidget {
@@ -47,29 +50,53 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
     });
 
     try {
-      final path = file.path;
-      if (path == null) return;
-
-      if ((file.extension ?? '').toLowerCase() == 'csv') {
-        final content = await File(path).readAsString();
-        final lines = content.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
-        if (lines.isNotEmpty) {
-          setState(() {
-            _preview = 'Linhas: ${lines.length}\nCabeçalho: ${lines.first}';
-          });
-        }
-      } else {
-        try {
-          final bytes = await File(path).readAsBytes();
-          final excel = Excel.decodeBytes(bytes);
-          final sheet = excel.tables.keys.isNotEmpty ? excel.tables[excel.tables.keys.first] : null;
-          if (sheet != null && sheet.rows.isNotEmpty) {
-            final header = sheet.rows.first.map((c) => c?.value ?? '').join(', ');
+      if (kIsWeb) {
+        // Web: usar bytes
+        if ((file.extension ?? '').toLowerCase() == 'csv' && file.bytes != null) {
+          final content = String.fromCharCodes(file.bytes!);
+          final lines = content.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
+          if (lines.isNotEmpty) {
             setState(() {
-              _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: $header';
+              _preview = 'Linhas: ${lines.length}\nCabeçalho: ${lines.first}';
             });
           }
-        } catch (_) {
+        } else if (file.bytes != null) {
+          try {
+            final excel = Excel.decodeBytes(file.bytes!);
+            final sheet = excel.tables.keys.isNotEmpty ? excel.tables[excel.tables.keys.first] : null;
+            if (sheet != null && sheet.rows.isNotEmpty) {
+              final header = sheet.rows.first.map((c) => c?.value ?? '').join(', ');
+              setState(() {
+                _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: $header';
+              });
+            }
+          } catch (_) {}
+        }
+      } else {
+        // Mobile/Desktop: usar path
+        final path = file.path;
+        if (path == null) return;
+        
+        if ((file.extension ?? '').toLowerCase() == 'csv') {
+          final content = await File(path).readAsString();
+          final lines = content.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
+          if (lines.isNotEmpty) {
+            setState(() {
+              _preview = 'Linhas: ${lines.length}\nCabeçalho: ${lines.first}';
+            });
+          }
+        } else {
+          try {
+            final bytes = await File(path).readAsBytes();
+            final excel = Excel.decodeBytes(bytes);
+            final sheet = excel.tables.keys.isNotEmpty ? excel.tables[excel.tables.keys.first] : null;
+            if (sheet != null && sheet.rows.isNotEmpty) {
+              final header = sheet.rows.first.map((c) => c?.value ?? '').join(', ');
+              setState(() {
+                _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: $header';
+              });
+            }
+          } catch (_) {}
         }
       }
     } catch (_) {}
@@ -83,6 +110,23 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       return;
     }
 
+    // Validar bytes para web ou path para mobile/desktop
+    if (kIsWeb) {
+      if (_pickedFile!.bytes == null || _pickedFile!.bytes!.isEmpty) {
+        setState(() {
+          _statusMessage = 'Arquivo inválido. Selecione um arquivo válido.';
+        });
+        return;
+      }
+    } else {
+      if (_pickedFile!.path == null) {
+        setState(() {
+          _statusMessage = 'Caminho do arquivo não encontrado.';
+        });
+        return;
+      }
+    }
+
     setState(() {
       _isUploading = true;
       _statusMessage = null;
@@ -93,12 +137,11 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       final endpoint = widget.uploadEndpoint.startsWith('/')
           ? widget.uploadEndpoint
           : '/${widget.uploadEndpoint}';
-      final response = await service.uploadSpreadsheet(
+      Response response = await service.uploadSpreadsheet(
         endpoint: endpoint,
         file: _pickedFile!,
       );
 
-      // Extrair informações do resultado
       final data = response.data as Map<String, dynamic>;
       final totalRows = data['totalRows'] ?? 0;
       final successCount = data['successCount'] ?? 0;
@@ -126,14 +169,31 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       final service = AdminUploadService();
       final response = await service.downloadTemplate(widget.templateType!);
 
-      // Aqui você pode implementar o download do arquivo
-      // Para web, use package:universal_html ou file_saver
-      // Para mobile, use path_provider e salve o arquivo
+      final bytes = response.data is List<int>
+          ? Uint8List.fromList(response.data as List<int>)
+          : response.data as Uint8List;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Download iniciado')),
-        );
+      if (kIsWeb) {
+        final blob = html.Blob([bytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'planilha_modelo_${widget.templateType}.xlsx')
+          ..click();
+        html.Url.revokeObjectUrl(url);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Planilha baixada!')),
+          );
+        }
+      } else {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/planilha_modelo_${widget.templateType}.xlsx');
+        await file.writeAsBytes(bytes);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Planilha salva em: ${file.path}')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -173,7 +233,10 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 24),
-            Text(widget.instructions, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            Text(
+              widget.instructions,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -216,13 +279,17 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
                         ? null
                         : () => setState(() {
                               _pickedFile = null;
+                              _preview = null;
                             }),
                   ),
                 ),
               ),
             if (_preview != null) ...[
               const SizedBox(height: 8),
-              Text('Pré-visualização:', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Pré-visualização:',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 4),
               Text(_preview!),
             ],
@@ -237,13 +304,26 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
                 elevation: 2,
               ),
               onPressed: _isUploading ? null : _uploadFile,
-              child: _isUploading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Enviar este arquivo'),
+              child: _isUploading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Enviar este arquivo'),
             ),
             const SizedBox(height: 12),
             if (_statusMessage != null)
               Text(
                 _statusMessage!,
-                style: TextStyle(color: _statusMessage!.startsWith('Erro') ? Colors.red : Colors.green),
+                style: TextStyle(
+                  color: _statusMessage!.startsWith('Erro')
+                      ? Colors.red
+                      : Colors.green,
+                ),
               ),
             const Spacer(),
           ],

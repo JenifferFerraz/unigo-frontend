@@ -80,27 +80,21 @@ class _AdminFeedbackStatsPageState extends State<AdminFeedbackStatsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Card: Total de Feedbacks
                         _buildSummaryCards(),
                         const SizedBox(height: 24),
 
-                        // Gráfico: Distribuição por Vínculo
                         _buildVinculoChart(),
                         const SizedBox(height: 24),
 
-                        // Gráfico: Anônimos vs Identificados
                         _buildAnonymousChart(),
                         const SizedBox(height: 24),
 
-                        // NPS Score
                         _buildNPSCard(),
                         const SizedBox(height: 24),
 
-                        // Médias das Avaliações
                         _buildAverageScoresCard(),
                         const SizedBox(height: 24),
 
-                        // Botão: Exportar CSV
                         _buildExportButton(),
                       ],
                     ),

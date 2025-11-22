@@ -10,44 +10,109 @@ class LocationProvider extends GetConnect {
   LocationProvider() {
     httpClient.baseUrl = _baseUrl;
     httpClient.timeout = const Duration(seconds: 30);
-    
   }
 
   // ============ UNIFIED ROUTES API ============
 
-
-    Future<RouteResponse?> getCompleteRoute({
-    required List<double> start,
+  /// Busca rota completa OU apenas estrutura (dependendo se 'start' é fornecido)
+  /// 
+  /// **COM start**: Retorna rota completa (externa + interna)
+  /// **SEM start**: Retorna apenas estrutura e salas (para visualização)
+  Future<RouteResponse?> getCompleteRoute({
+    List<double>? start, // ✨ OPCIONAL agora
     required int destinationRoomId,
     TransportMode mode = TransportMode.walking,
   }) async {
     try {
-      if (start.length != 2) {
-        return null;
-      }
-      List<double> validStart = [start[0], start[1]];
-      final requestBody = {
-        'start': validStart,
+      print('[Provider] getCompleteRoute chamado');
+      print('  destinationRoomId: $destinationRoomId');
+      print('  start: $start');
+      print('  mode: $mode');
+
+      // Monta body da requisição
+      final requestBody = <String, dynamic>{
         'destinationRoomId': destinationRoomId,
-        'mode': mode == TransportMode.driving ? 'driving' : 'walking',
       };
-      final response = await post(
-        '/routes/complete',
-        requestBody,
-      );
+
+      // ✅ Só adiciona 'start' e 'mode' se houver localização
+      if (start != null && start.length == 2) {
+        requestBody['start'] = [start[0], start[1]];
+        requestBody['mode'] = mode == TransportMode.driving ? 'driving' : 'walking';
+        print('[Provider] → Calculando ROTA COMPLETA');
+      } else {
+        print('[Provider] → Buscando APENAS ESTRUTURA');
+      }
+
+      final response = await post('/routes/complete', requestBody);
+
+      print('[Provider] Response status: ${response.statusCode}');
+
       if (response.statusCode == 200 && response.body != null) {
-        final routeResponse = RouteResponse.fromJson(response.body);
+        final data = response.body;
+        
+        // Verifica se é modo "structure_only" (sem rota)
+        final isStructureOnly = data['mode'] == 'structure_only';
+
+        if (isStructureOnly) {
+          print('[Provider] ✓ Estrutura recebida (sem rota)');
+          
+          // Retorna RouteResponse sem rota, apenas com estrutura
+          return RouteResponse(
+            success: true,
+            route: null, // ← SEM ROTA
+            structure: data['data']['structure'],
+            roomsByFloor: _parseRoomsByFloor(data['data']['roomsByFloor']),
+            metadata: {
+              'mode': 'structure_only',
+              'message': data['message'],
+            },
+          );
+        }
+
+        // Rota completa (modo normal)
+        print('[Provider] ✓ Rota completa recebida');
+        final routeResponse = RouteResponse.fromJson(data);
+        
         if (routeResponse.success && routeResponse.route != null) {
+          print('  - Segmentos: ${routeResponse.route!.segments.length}');
+          print('  - Distância: ${routeResponse.route!.totalDistance.toStringAsFixed(0)}m');
           return routeResponse;
-        } else {
-          return null;
         }
       }
+
+      print('[Provider] ❌ Resposta inválida');
       return null;
     } catch (e, stack) {
+      print('[Provider] ❌ Erro: $e');
+      print(stack);
       return null;
     }
   }
+
+  /// Helper para parse de roomsByFloor
+  Map<String, List<Map<String, dynamic>>>? _parseRoomsByFloor(dynamic roomsByFloor) {
+    if (roomsByFloor == null) return null;
+
+    try {
+      final result = <String, List<Map<String, dynamic>>>{};
+      
+      if (roomsByFloor is Map) {
+        roomsByFloor.forEach((key, value) {
+          if (value is List) {
+            result[key.toString()] = List<Map<String, dynamic>>.from(
+              value.map((item) => Map<String, dynamic>.from(item))
+            );
+          }
+        });
+      }
+
+      return result.isEmpty ? null : result;
+    } catch (e) {
+      print('[Provider] Erro ao parse roomsByFloor: $e');
+      return null;
+    }
+  }
+
   /// Busca apenas rota interna (legacy - mantido para compatibilidade)
   /// Endpoint: POST /api/routes/internal
   Future<Map<String, dynamic>?> getInternalRoute({
@@ -178,7 +243,6 @@ class LocationProvider extends GetConnect {
     LatLng start,
     LatLng end,
   ) async {
-    
     try {
       final distance = Distance().as(
         LengthUnit.Meter,
