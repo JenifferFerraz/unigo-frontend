@@ -19,6 +19,7 @@ import '../features/admin/presentation/calendario_upload_page.dart';
 import '../features/admin/presentation/provas_upload_page.dart';
 import '../features/admin/presentation/admin_feedback_stats_page.dart';
 import '../features/events/presentation/events_page.dart';
+import '../features/debug/presentation/route_debug_widget.dart';
 
 abstract class AppRoutes {
   static const INITIAL = '/';
@@ -42,6 +43,7 @@ abstract class AppRoutes {
   static const ADMIN_UPLOAD_CALENDARIO = '/admin-upload/calendario';
   static const ADMIN_UPLOAD_PROVAS = '/admin-upload/provas';
   static const ADMIN_FEEDBACK_STATS = '/admin-feedback-stats';
+  static const DEBUG_ROUTE = '/debug-route';
 
   static final pages = [
     GetPage(
@@ -135,6 +137,10 @@ abstract class AppRoutes {
       name: FEEDBACK,
       page: () => const FeedbackPage(),
       // Disponível também para visitantes; mantém argumentos para voltar ao modo visitante
+    ),
+    GetPage(
+      name: DEBUG_ROUTE,
+      page: () => const RouteDebugPage(),
     ),
   ];
 }
