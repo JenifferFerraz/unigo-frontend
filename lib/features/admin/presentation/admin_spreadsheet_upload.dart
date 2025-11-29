@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -116,7 +118,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       final endpoint = widget.uploadEndpoint.startsWith('/')
           ? widget.uploadEndpoint
           : '/${widget.uploadEndpoint}';
-      Response response = await service.uploadSpreadsheet(
+      final response = await service.uploadSpreadsheet(
         endpoint: endpoint,
         file: cleanFile,
       );
