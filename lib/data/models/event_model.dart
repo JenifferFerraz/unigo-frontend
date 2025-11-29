@@ -6,6 +6,7 @@ class Event {
   final String date;
   final String? description;
   final bool isSubscribed;
+  final String? link;
 
   Event({
     required this.id,
@@ -15,6 +16,7 @@ class Event {
     required this.date,
     this.description,
     this.isSubscribed = false,
+    this.link,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class Event {
       date: json['date'] ?? '',
       description: json['description'],
       isSubscribed: json['isSubscribed'] ?? false,
+      link: json['link'],
     );
   }
 
@@ -38,6 +41,7 @@ class Event {
       'date': date,
       'description': description,
       'isSubscribed': isSubscribed,
+      'link': link,
     };
   }
 
@@ -49,6 +53,7 @@ class Event {
     String? date,
     String? description,
     bool? isSubscribed,
+    String? link,
   }) {
     return Event(
       id: id ?? this.id,
@@ -58,6 +63,7 @@ class Event {
       date: date ?? this.date,
       description: description ?? this.description,
       isSubscribed: isSubscribed ?? this.isSubscribed,
+      link: link ?? this.link,
     );
   }
 }

@@ -1,6 +1,11 @@
+import 'dart:typed_data';
+import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
+import 'package:universal_html/html.dart' as html;
 import '../data/admin_upload_service.dart';
 import '../../home/presentation/components/sidebar.dart';
 
@@ -46,10 +51,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
     });
 
     try {
-      // Com withData: true, os bytes sempre estarão disponíveis
-      // Isso funciona tanto na web quanto no mobile/desktop
       final bytes = file.bytes;
-      
       if (bytes == null) {
         setState(() {
           _statusMessage = 'Erro: não foi possível ler o arquivo. Certifique-se de que o arquivo foi selecionado corretamente.';
@@ -79,8 +81,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
               _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: ${headerParts.join(', ')}';
             });
           }
-        } catch (_) {
-        }
+        } catch (_) {}
       }
     } catch (_) {}
   }
@@ -93,36 +94,24 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       return;
     }
 
+    final fileBytes = _pickedFile!.bytes;
+    if (fileBytes == null || fileBytes.isEmpty) {
+      setState(() {
+        _statusMessage = 'Erro: arquivo não tem dados. Tente selecionar o arquivo novamente.';
+      });
+      return;
+    }
+
     setState(() {
       _isUploading = true;
       _statusMessage = null;
     });
 
     try {
-      // Verificar se o arquivo tem bytes antes de tentar fazer upload
-      if (_pickedFile!.bytes == null || _pickedFile!.bytes!.isEmpty) {
-        setState(() {
-          _statusMessage = 'Erro: arquivo não tem dados. Tente selecionar o arquivo novamente.';
-        });
-        return;
-      }
-
-      // Criar uma cópia do arquivo apenas com bytes para evitar qualquer acesso a path
-      // Isso previne erros na web onde path é sempre null
-      final fileBytes = _pickedFile!.bytes;
-      if (fileBytes == null || fileBytes.isEmpty) {
-        setState(() {
-          _statusMessage = 'Erro: arquivo não tem dados. Tente selecionar o arquivo novamente.';
-        });
-        return;
-      }
-
-      // Criar um PlatformFile "limpo" apenas com os dados necessários
       final cleanFile = PlatformFile(
         name: _pickedFile!.name,
         size: _pickedFile!.size,
         bytes: fileBytes,
-        // Não incluir path para evitar erros na web
       );
 
       final service = AdminUploadService();
@@ -134,7 +123,6 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
         file: cleanFile,
       );
 
-      // Extrair informações do resultado
       final data = response.data as Map<String, dynamic>;
       final totalRows = data['totalRows'] ?? 0;
       final successCount = data['successCount'] ?? 0;
@@ -145,17 +133,9 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
             'Total: $totalRows | Sucesso: $successCount | Erros: $errorCount';
       });
     } catch (e) {
-      // Tratar erro específico do FilePicker sobre path
-      final errorMessage = e.toString();
-      if (errorMessage.contains('path') && errorMessage.contains('null')) {
-        setState(() {
-          _statusMessage = 'Erro: problema ao acessar arquivo. Por favor, selecione o arquivo novamente usando o botão "Anexar Arquivo".';
-        });
-      } else {
-        setState(() {
-          _statusMessage = 'Erro ao enviar arquivo: $e';
-        });
-      }
+      setState(() {
+        _statusMessage = 'Erro ao enviar arquivo: $e';
+      });
     } finally {
       setState(() {
         _isUploading = false;
@@ -168,16 +148,33 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
 
     try {
       final service = AdminUploadService();
-      await service.downloadTemplate(widget.templateType!);
+      final response = await service.downloadTemplate(widget.templateType!);
 
-      // Aqui você pode implementar o download do arquivo
-      // Para web, use package:universal_html ou file_saver
-      // Para mobile, use path_provider e salve o arquivo
+      final bytes = response.data is List<int>
+          ? Uint8List.fromList(response.data as List<int>)
+          : response.data as Uint8List;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Download iniciado')),
-        );
+      if (kIsWeb) {
+        final blob = html.Blob([bytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'planilha_modelo_${widget.templateType}.xlsx')
+          ..click();
+        html.Url.revokeObjectUrl(url);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Planilha baixada!')),
+          );
+        }
+      } else {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/planilha_modelo_${widget.templateType}.xlsx');
+        await file.writeAsBytes(bytes);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Planilha salva em: ${file.path}')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -190,7 +187,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
 
   @override
   Widget build(BuildContext context) {
-const appBlue = Color(0xFF3C3CC0);
+    const appBlue = Color(0xFF3C3CC0);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: appBlue,
@@ -218,7 +215,10 @@ const appBlue = Color(0xFF3C3CC0);
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 24),
-            Text(widget.instructions, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            Text(
+              widget.instructions,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -261,13 +261,17 @@ const appBlue = Color(0xFF3C3CC0);
                         ? null
                         : () => setState(() {
                               _pickedFile = null;
+                              _preview = null;
                             }),
                   ),
                 ),
               ),
             if (_preview != null) ...[
               const SizedBox(height: 8),
-              Text('Pré-visualização:', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Pré-visualização:',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 4),
               Text(_preview!),
             ],
@@ -282,13 +286,26 @@ const appBlue = Color(0xFF3C3CC0);
                 elevation: 2,
               ),
               onPressed: _isUploading ? null : _uploadFile,
-              child: _isUploading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Enviar este arquivo'),
+              child: _isUploading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Enviar este arquivo'),
             ),
             const SizedBox(height: 12),
             if (_statusMessage != null)
               Text(
                 _statusMessage!,
-                style: TextStyle(color: _statusMessage!.startsWith('Erro') ? Colors.red : Colors.green),
+                style: TextStyle(
+                  color: _statusMessage!.startsWith('Erro')
+                      ? Colors.red
+                      : Colors.green,
+                ),
               ),
             const Spacer(),
           ],

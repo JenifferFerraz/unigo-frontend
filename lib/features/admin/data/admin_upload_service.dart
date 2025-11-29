@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/config/env_service.dart';
 import '../../../storage/token_storage.dart';
 
@@ -15,21 +17,33 @@ class AdminUploadService {
       final token = await TokenStorage.getToken();
       if (token == null) throw Exception('Token não encontrado');
 
-      // SEMPRE usar bytes (obrigatório na web, funciona em todas as plataformas)
-      // Com withData: true no FilePicker, bytes sempre estará disponível
-      // Criar uma cópia dos bytes para evitar qualquer acesso a path
-      final bytes = file.bytes;
-      if (bytes == null || bytes.isEmpty) {
-        throw Exception('Arquivo não disponível. Certifique-se de que o arquivo foi selecionado corretamente. Se o problema persistir, tente selecionar o arquivo novamente.');
-      }
+      MultipartFile multipartFile;
+      FormData formData;
 
-      // Criar FormData usando apenas bytes, sem qualquer referência a path
-      final formData = FormData.fromMap({
-        'file': MultipartFile.fromBytes(
-          bytes,
+      if (kIsWeb) {
+        if (file.bytes == null) {
+          throw Exception('Bytes do arquivo não disponíveis na web');
+        }
+        multipartFile = MultipartFile.fromBytes(
+          file.bytes!,
           filename: file.name,
-        ),
-      });
+        );
+        formData = FormData.fromMap({
+          'file': multipartFile,
+        });
+      } else {
+        final filePath = file.path;
+        if (filePath == null) {
+          throw Exception('Caminho do arquivo não disponível');
+        }
+        multipartFile = await MultipartFile.fromFile(
+          filePath,
+          filename: file.name,
+        );
+        formData = FormData.fromMap({
+          'file': multipartFile,
+        });
+      }
 
       final url = EnvService.apiBaseUrl + endpoint;
       return await _dio.post(
@@ -43,7 +57,6 @@ class AdminUploadService {
         ),
       );
     } catch (e) {
-      // Capturar e relançar com mensagem mais clara se for erro relacionado a path
       final errorStr = e.toString();
       if (errorStr.contains('path') && errorStr.contains('null')) {
         throw Exception('Erro ao processar arquivo na web. Por favor, certifique-se de que o arquivo foi selecionado com withData: true e tente novamente.');
@@ -109,4 +122,3 @@ class AdminUploadService {
     }
   }
 }
-

@@ -78,6 +78,20 @@ class RouteSegment {
 
   /// Verifica se é rota interna
   bool get isInternal => type == RouteSegmentType.internal;
+
+  /// Converte para JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type.toString().split('.').last,
+      'mode': mode == TransportMode.driving ? 'driving' : 'walking',
+      'path': path.map((p) => [p.longitude, p.latitude]).toList(),
+      'distance': distance,
+      'floor': floor,
+      'description': description,
+      'fromFloor': fromFloor,
+      'toFloor': toFloor,
+    };
+  }
 }
 
 /// Rota de navegação completa (suporta rotas unificadas)
@@ -215,6 +229,18 @@ class NavigationRoute {
     final remainingMinutes = minutes % 60;
     return '${hours}h ${remainingMinutes}min';
   }
+
+  /// Converte para JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'segments': segments.map((s) => s.toJson()).toList(),
+      'totalDistance': totalDistance,
+      'estimatedTime': estimatedTime,
+      'destination': destination,
+      'mode': mode == TransportMode.driving ? 'driving' : 'walking',
+      'summary': summary?.toJson(),
+    };
+  }
 }
 
 /// Resumo da rota
@@ -238,6 +264,14 @@ class RouteSummary {
   }
 
   double get totalDistance => externalDistance + internalDistance;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'externalDistance': externalDistance,
+      'internalDistance': internalDistance,
+      'floorsTraversed': floorsTraversed,
+    };
+  }
 }
 
 // ============ LEGACY NAVIGATION STEP (Compatibilidade) ============
@@ -349,14 +383,13 @@ class RouteRequest {
   }
 }
 
-/// Response da API de rotas
 class RouteResponse {
   final bool success;
   final NavigationRoute? route;
   final String? error;
   final Map<String, dynamic>? metadata;
-  final Map<String, dynamic>? structure; // Estrutura retornada com a rota
-  final Map<String, dynamic>? roomsByFloor; // Salas por andar retornadas com a rota
+  final Map<String, dynamic>? structure;
+  final Map<String, List<Map<String, dynamic>>>? roomsByFloor; 
 
   RouteResponse({
     required this.success,
@@ -368,25 +401,126 @@ class RouteResponse {
   });
 
   factory RouteResponse.fromJson(Map<String, dynamic> json) {
-    // Processa a estrutura e roomsByFloor que vêm junto com a rota
-    Map<String, dynamic>? structureData;
-    Map<String, dynamic>? roomsByFloorData;
-    
-    if (json['data'] != null) {
-      final data = json['data'] as Map<String, dynamic>;
-      structureData = data['structure'] as Map<String, dynamic>?;
-      roomsByFloorData = data['roomsByFloor'] as Map<String, dynamic>?;
+    try {
+      print('[RouteResponse] Parsing JSON...');
+      print('  success: ${json['success']}');
+      print('  mode: ${json['mode']}');
+      
+      final isStructureOnly = json['mode'] == 'structure_only';
+      
+      if (isStructureOnly) {
+        // ✨ Modo visualização: SEM rota
+        print('[RouteResponse] ✓ Modo: structure_only');
+        
+        final data = json['data'] as Map<String, dynamic>?;
+        
+        return RouteResponse(
+          success: json['success'] ?? true,
+          route: null, // SEM ROTA
+          structure: data?['structure'] as Map<String, dynamic>?,
+          roomsByFloor: _parseRoomsByFloor(data?['roomsByFloor']),
+          metadata: {
+            'mode': 'structure_only',
+            'message': json['message'],
+            'floors': data?['floors'],
+          },
+        );
+      }
+      
+      // ✅ Modo navegação: COM rota
+      print('[RouteResponse] ✓ Modo: navegação completa');
+      
+      final data = json['data'] as Map<String, dynamic>?;
+      
+      if (data == null) {
+        print('[RouteResponse] ⚠️ data é null');
+        return RouteResponse(
+          success: false,
+          error: 'Dados da rota não encontrados',
+        );
+      }
+      
+      return RouteResponse(
+        success: json['success'] ?? true,
+        route: NavigationRoute.fromJson(data),
+        structure: data['structure'] as Map<String, dynamic>?,
+        roomsByFloor: _parseRoomsByFloor(data['roomsByFloor']),
+        metadata: json['metadata'] as Map<String, dynamic>?,
+      );
+      
+    } catch (e, stack) {
+      print('[RouteResponse] ❌ Erro ao parse: $e');
+      print(stack);
+      
+      return RouteResponse(
+        success: false,
+        error: 'Erro ao processar resposta: $e',
+      );
+    }
+  }
+
+
+  static Map<String, List<Map<String, dynamic>>>? _parseRoomsByFloor(
+    dynamic roomsByFloor
+  ) {
+    if (roomsByFloor == null) return null;
+
+    try {
+      final result = <String, List<Map<String, dynamic>>>{};
+      
+      if (roomsByFloor is Map) {
+        roomsByFloor.forEach((key, value) {
+          if (value is List) {
+            result[key.toString()] = List<Map<String, dynamic>>.from(
+              value.map((item) {
+                if (item is Map) {
+                  return Map<String, dynamic>.from(item);
+                }
+                return <String, dynamic>{};
+              })
+            );
+          }
+        });
+      }
+
+      return result.isEmpty ? null : result;
+    } catch (e) {
+      print('[RouteResponse] ⚠️ Erro ao parse roomsByFloor: $e');
+      return null;
+    }
+  }
+
+  bool get isStructureOnly => metadata?['mode'] == 'structure_only';
+
+  /// Verifica se tem rota de navegação
+  bool get hasRoute => route != null;
+
+  /// Mensagem do servidor (quando disponível)
+  String? get message => metadata?['message'];
+
+  Map<String, dynamic> toJson() {
+    return {
+      'success': success,
+      'route': route?.toJson(),
+      'error': error,
+      'metadata': metadata,
+      'structure': structure,
+      'roomsByFloor': roomsByFloor,
+    };
+  }
+
+  @override
+  String toString() {
+    if (isStructureOnly) {
+      final structureName = structure?['name'] ?? 'Desconhecida';
+      final floors = metadata?['floors'] as List? ?? [];
+      return 'RouteResponse(mode: structure_only, structure: $structureName, floors: $floors)';
     }
     
-    return RouteResponse(
-      success: json['success'] ?? false,
-      route: json['data'] != null 
-          ? NavigationRoute.fromJson(json['data']) 
-          : null,
-      error: json['error'],
-      metadata: json['metadata'],
-      structure: structureData,
-      roomsByFloor: roomsByFloorData,
-    );
+    if (hasRoute) {
+      return 'RouteResponse(route: ${route!.segments.length} segmentos, ${route!.distanceFormatted})';
+    }
+    
+    return 'RouteResponse(success: $success, error: $error)';
   }
 }
