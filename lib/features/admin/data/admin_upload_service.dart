@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-// TODO: Ajuste os caminhos abaixo de acordo com a estrutura do seu projeto
 import '../../../core/config/env_service.dart';
 import '../../../storage/token_storage.dart';
 
@@ -19,9 +18,9 @@ class AdminUploadService {
       if (token == null) throw Exception('Token não encontrado');
 
       MultipartFile multipartFile;
+      FormData formData;
 
       if (kIsWeb) {
-        // Web: usar bytes
         if (file.bytes == null) {
           throw Exception('Bytes do arquivo não disponíveis na web');
         }
@@ -29,8 +28,10 @@ class AdminUploadService {
           file.bytes!,
           filename: file.name,
         );
+        formData = FormData.fromMap({
+          'file': multipartFile,
+        });
       } else {
-        // Mobile/Desktop: usar path
         final filePath = file.path;
         if (filePath == null) {
           throw Exception('Caminho do arquivo não disponível');
@@ -39,11 +40,10 @@ class AdminUploadService {
           filePath,
           filename: file.name,
         );
+        formData = FormData.fromMap({
+          'file': multipartFile,
+        });
       }
-
-      final formData = FormData.fromMap({
-        'file': multipartFile,
-      });
 
       final url = EnvService.apiBaseUrl + endpoint;
       return await _dio.post(
@@ -57,6 +57,10 @@ class AdminUploadService {
         ),
       );
     } catch (e) {
+      final errorStr = e.toString();
+      if (errorStr.contains('path') && errorStr.contains('null')) {
+        throw Exception('Erro ao processar arquivo na web. Por favor, certifique-se de que o arquivo foi selecionado com withData: true e tente novamente.');
+      }
       rethrow;
     }
   }

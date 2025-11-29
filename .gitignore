@@ -19,6 +19,8 @@ migrate_working_dir/
 *.iws
 .idea/
 
+build/
+
 
 **/doc/api/
 **/ios/Flutter/.last_build_id

@@ -1,6 +1,3 @@
-import 'dart:io' show File, Platform; 
-import 'dart:typed_data';
-import 'package:dio/dio.dart';  
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:universal_html/html.dart' as html;
 import '../data/admin_upload_service.dart';
+import '../../home/presentation/components/sidebar.dart';
 
 class AdminSpreadsheetUpload extends StatefulWidget {
   final String title;
@@ -39,6 +37,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       type: FileType.custom,
       allowMultiple: false,
       allowedExtensions: ['xlsx', 'xls', 'csv'],
+      withData: true, 
     );
     if (result == null) return;
 
@@ -50,54 +49,37 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
     });
 
     try {
-      if (kIsWeb) {
-        // Web: usar bytes
-        if ((file.extension ?? '').toLowerCase() == 'csv' && file.bytes != null) {
-          final content = String.fromCharCodes(file.bytes!);
-          final lines = content.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
-          if (lines.isNotEmpty) {
-            setState(() {
-              _preview = 'Linhas: ${lines.length}\nCabeçalho: ${lines.first}';
-            });
-          }
-        } else if (file.bytes != null) {
-          try {
-            final excel = Excel.decodeBytes(file.bytes!);
-            final sheet = excel.tables.keys.isNotEmpty ? excel.tables[excel.tables.keys.first] : null;
-            if (sheet != null && sheet.rows.isNotEmpty) {
-              final header = sheet.rows.first.map((c) => c?.value ?? '').join(', ');
-              setState(() {
-                _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: $header';
-              });
-            }
-          } catch (_) {}
+      final bytes = file.bytes;
+      if (bytes == null) {
+        setState(() {
+          _statusMessage = 'Erro: não foi possível ler o arquivo. Certifique-se de que o arquivo foi selecionado corretamente.';
+        });
+        return;
+      }
+
+      if ((file.extension ?? '').toLowerCase() == 'csv') {
+        final content = String.fromCharCodes(bytes);
+        final lines = content.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
+        if (lines.isNotEmpty) {
+          final headerParts = lines.first.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+          setState(() {
+            _preview = 'Linhas: ${lines.length}\nCabeçalho: ${headerParts.join(', ')}';
+          });
         }
       } else {
-        // Mobile/Desktop: usar path
-        final path = file.path;
-        if (path == null) return;
-        
-        if ((file.extension ?? '').toLowerCase() == 'csv') {
-          final content = await File(path).readAsString();
-          final lines = content.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
-          if (lines.isNotEmpty) {
+        try {
+          final excel = Excel.decodeBytes(bytes);
+          final sheet = excel.tables.keys.isNotEmpty ? excel.tables[excel.tables.keys.first] : null;
+          if (sheet != null && sheet.rows.isNotEmpty) {
+            final headerParts = sheet.rows.first
+                .map((c) => c?.value?.toString().trim() ?? '')
+                .where((s) => s.isNotEmpty)
+                .toList();
             setState(() {
-              _preview = 'Linhas: ${lines.length}\nCabeçalho: ${lines.first}';
+              _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: ${headerParts.join(', ')}';
             });
           }
-        } else {
-          try {
-            final bytes = await File(path).readAsBytes();
-            final excel = Excel.decodeBytes(bytes);
-            final sheet = excel.tables.keys.isNotEmpty ? excel.tables[excel.tables.keys.first] : null;
-            if (sheet != null && sheet.rows.isNotEmpty) {
-              final header = sheet.rows.first.map((c) => c?.value ?? '').join(', ');
-              setState(() {
-                _preview = 'Linhas (planilha): ${sheet.maxRows}\nCabeçalho: $header';
-              });
-            }
-          } catch (_) {}
-        }
+        } catch (_) {}
       }
     } catch (_) {}
   }
@@ -110,21 +92,12 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       return;
     }
 
-    // Validar bytes para web ou path para mobile/desktop
-    if (kIsWeb) {
-      if (_pickedFile!.bytes == null || _pickedFile!.bytes!.isEmpty) {
-        setState(() {
-          _statusMessage = 'Arquivo inválido. Selecione um arquivo válido.';
-        });
-        return;
-      }
-    } else {
-      if (_pickedFile!.path == null) {
-        setState(() {
-          _statusMessage = 'Caminho do arquivo não encontrado.';
-        });
-        return;
-      }
+    final fileBytes = _pickedFile!.bytes;
+    if (fileBytes == null || fileBytes.isEmpty) {
+      setState(() {
+        _statusMessage = 'Erro: arquivo não tem dados. Tente selecionar o arquivo novamente.';
+      });
+      return;
     }
 
     setState(() {
@@ -133,13 +106,19 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
     });
 
     try {
+      final cleanFile = PlatformFile(
+        name: _pickedFile!.name,
+        size: _pickedFile!.size,
+        bytes: fileBytes,
+      );
+
       final service = AdminUploadService();
       final endpoint = widget.uploadEndpoint.startsWith('/')
           ? widget.uploadEndpoint
           : '/${widget.uploadEndpoint}';
       Response response = await service.uploadSpreadsheet(
         endpoint: endpoint,
-        file: _pickedFile!,
+        file: cleanFile,
       );
 
       final data = response.data as Map<String, dynamic>;
@@ -227,6 +206,7 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
         ),
         centerTitle: true,
       ),
+      drawer: Sidebar(),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(

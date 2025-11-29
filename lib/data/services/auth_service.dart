@@ -5,9 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
 import './storage_service.dart';
-import '../models/user_model.dart';
 import '../../core/config/env_service.dart';
-import 'dart:convert';
 import './location_service.dart';
 import './websocket_service.dart';
 
@@ -236,13 +234,13 @@ class AuthService extends GetxService {
   /// Verifica se existe um usuário autenticado
 
   bool get isAuthenticated => currentUser.value != null;
-  /// Inicia o processo de redefinição de senha
+  /// Inicia o processo de redefinição de senha (solicita email)
 
-  Future<bool> resetPassword({required String email}) async {
+  Future<bool> requestPasswordReset({required String email}) async {
     try {
       isLoading.value = true;
       
-      final response = await dio.post('/auth/reset-password', data: {
+      final response = await dio.post('/auth/forgot-password', data: {
         'email': email,
       });
 
@@ -252,6 +250,42 @@ class AuthService extends GetxService {
         'Erro',
         'Ocorreu um erro ao enviar o email de recuperação',
         snackPosition: SnackPosition.BOTTOM,
+      );
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Confirma a redefinição de senha com o token
+
+  Future<bool> confirmPasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      isLoading.value = true;
+      
+      final response = await dio.post('/auth/reset-password', data: {
+        'token': token,
+        'newPassword': newPassword,
+      });
+
+      return response.statusCode == 200;
+    } catch (e) {
+      String errorMessage = 'Ocorreu um erro ao redefinir a senha';
+      if (e is DioException && e.response != null) {
+        final data = e.response?.data;
+        if (data != null && data['message'] != null) {
+          errorMessage = data['message'];
+        }
+      }
+      Get.snackbar(
+        'Erro',
+        errorMessage,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
       );
       return false;
     } finally {
