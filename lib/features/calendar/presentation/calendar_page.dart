@@ -78,16 +78,10 @@ class _CalendarPageState extends State<CalendarPage> {
     setState(() => _isLoading = true);
     try {
       final user = Get.find<AuthService>().currentUser.value;
-      String? courseIdToSend;
-      if (_isAdmin) {
-        courseIdToSend = _selectedCourse;
-      } else {
-        courseIdToSend = _selectedCourse;
-      }
       final events = await _calendarService.getCalendarEvents(
         month: _currentMonth,
         year: _currentYear,
-        courseId: courseIdToSend,
+        courseId: _selectedCourse,
         isActive: true,
         role: user?.role,
       );
@@ -170,41 +164,8 @@ class _CalendarPageState extends State<CalendarPage> {
         elevation: 0,
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF00d9ff), Color(0xFF3C3CC0)],
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0xFF00d9ff).withOpacity(0.5),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.emoji_events, color: Colors.white, size: 32),
-              padding: EdgeInsets.all(6),
-            ),
-          ),
-          Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Color(0xFF00d9ff),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0xFF00d9ff).withOpacity(0.3),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Icon(Icons.notifications, color: Colors.white, size: 28),
-              padding: EdgeInsets.all(6),
-            ),
+            child: Icon(Icons.emoji_events, color: Colors.white, size: 32),
           ),
         ],
       ),
