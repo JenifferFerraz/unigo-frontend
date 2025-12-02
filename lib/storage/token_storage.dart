@@ -27,7 +27,20 @@ class TokenStorage {
     }
   }
 
-  /// Salva o token de autenticação no armazenamento seguro
+  static Future<String?> getCourseId() async {
+    try {
+      final storageService = Get.find<StorageService>();
+      final userData = await storageService.getUserData();
+      if (userData != null && userData['courseId'] != null) {
+        return userData['courseId'].toString();
+      }
+      return null;
+    } catch (e) {
+      print('Erro ao obter courseId: $e');
+      return null;
+    }
+  }
+
   static Future<void> setToken(String token, Map<String, dynamic> userData) async {
     try {
       final storageService = Get.find<StorageService>();

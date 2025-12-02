@@ -11,6 +11,7 @@ import './components/location_search.dart';
 import './components/feedback_tab.dart';
 import '../../../data/services/websocket_service.dart';
 import '../../../data/models/navigation_model.dart';
+import '../../../data/providers/location_provider.dart' as provider;
 
 class HomePage extends StatefulWidget {
   final bool showSearch;
@@ -22,38 +23,31 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _showLocationSearch = false;
-  bool _isInitialized = false; // ← NOVA FLAG
+  bool _isInitialized = false;
   LocationService? _locationService;
 
   @override
   void initState() {
     super.initState();
-    _initializeServices();
+    _initializeServices().then((_) {
+      // Após inicializar, processa navegação se houver
+      _processNavigationArguments();
+    });
   }
 
-  /// Inicializa serviços necessários
   Future<void> _initializeServices() async {
     try {
-      print('[HomePage] Iniciando serviços...');
       
-      // 1. Garante WebSocket conectado
       await _ensureWebSocketConnected();
       
-      // 2. Garante LocationService registrado
       await _initializeLocationService();
       
-      // 3. Marca como inicializado
       if (mounted) {
         setState(() {
           _isInitialized = true;
         });
       }
-      
-      print('[HomePage] ✓ Serviços inicializados');
     } catch (e) {
-      print('[HomePage] ❌ Erro ao inicializar serviços: $e');
-      
-      // Mesmo com erro, marca como inicializado para não travar
       if (mounted) {
         setState(() {
           _isInitialized = true;
@@ -66,20 +60,15 @@ class _HomePageState extends State<HomePage> {
   Future<void> _ensureWebSocketConnected() async {
     try {
       if (!Get.isRegistered<WebSocketService>()) {
-        print('[HomePage] Registrando WebSocketService...');
         final ws = Get.put(WebSocketService());
         await ws.connect();
       } else {
         final ws = Get.find<WebSocketService>();
         if (!ws.isConnected.value) {
-          print('[HomePage] Reconectando WebSocket...');
           await ws.connect();
         }
       }
-      print('[HomePage] ✓ WebSocket OK');
-    } catch (e) {
-      print('[HomePage] ⚠️ Erro no WebSocket (não crítico): $e');
-    }
+    } catch (e) {}
   }
 
   /// Inicializa LocationService
@@ -87,28 +76,191 @@ class _HomePageState extends State<HomePage> {
     try {
       if (Get.isRegistered<LocationService>()) {
         _locationService = Get.find<LocationService>();
-        print('[HomePage] ✓ LocationService encontrado');
       } else {
-        print('[HomePage] Registrando LocationService...');
         _locationService = Get.put(LocationService());
-        
         // Só tenta obter localização se não for visitante
         if (!_isVisitor) {
           await _locationService?.requestLocationPermission();
         }
-        
-        print('[HomePage] ✓ LocationService registrado');
       }
     } catch (e) {
-      print('[HomePage] ⚠️ Erro ao inicializar LocationService: $e');
-      
       // Tenta criar um novo mesmo com erro
       try {
         _locationService = Get.put(LocationService(), permanent: false);
-      } catch (e2) {
-        print('[HomePage] ❌ Não foi possível criar LocationService: $e2');
-      }
+      } catch (e2) {}
     }
+  }
+
+  Future<void> _processNavigationArguments() async {
+    final args = Get.arguments as Map<String, dynamic>?;
+    if (args == null) return;
+
+    final roomId = args['roomId'] as int?;
+    if (roomId != null) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!mounted || _locationService == null) return;
+      try {
+        final hasLocation = _locationService?.currentPosition.value != null;
+        if (hasLocation) {
+          await _fetchAndNavigateToStructure(roomId);
+        } else {
+          await _fetchAndVisualizeStructure(roomId);
+        }
+      } catch (e) {
+        _showError('Erro ao iniciar navegação: $e');
+      }
+      return;
+    }
+  }
+
+  Future<void> _fetchAndVisualizeStructure(int structureId) async {
+    try {
+      final locationProvider = provider.LocationProvider();
+      
+      final routeResponse = await locationProvider.getCompleteRoute(
+        start: null,
+        destinationRoomId: structureId,
+        mode: TransportMode.walking,
+      );
+
+      if (routeResponse?.structure != null) {
+        final structureData = Map<String, dynamic>.from(routeResponse!.structure!);
+        
+        if (routeResponse.roomsByFloor != null) {
+          structureData['roomsByFloor'] = routeResponse.roomsByFloor;
+        }
+        
+        _locationService?.nearestStructure.value = structureData;
+
+        if (routeResponse.roomsByFloor != null) {
+          final floors = (routeResponse.structure!['floors'] as List?)
+              ?.cast<int>()
+              .toList() ?? [];
+          
+          if (floors.isNotEmpty) {
+            final firstFloor = floors.first;
+            final floorKey = firstFloor.toString();
+            final rooms = routeResponse.roomsByFloor![floorKey];
+            
+            if (rooms is List) {
+              final roomsList = rooms as List;
+              if (roomsList.isNotEmpty) {
+                _locationService?.roomsOnFloor.clear();
+                _locationService?.roomsOnFloor.assignAll(
+                  roomsList.cast<Map<String, dynamic>>()
+                );
+              }
+            }
+          }
+        }
+
+        _showSuccess('Estrutura carregada no mapa');
+      }
+    } catch (e) {
+      _showError('Erro ao carregar estrutura: $e');
+    }
+  }
+
+  /// Busca e inicia navegação para estrutura
+  Future<void> _fetchAndNavigateToStructure(int structureId) async {
+    try {
+      // Verifica localização
+      if (_locationService?.currentPosition.value == null) {
+        _showError('Localização não disponível');
+        return;
+      }
+
+      // Mostra loading
+      Get.dialog(
+        const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Calculando rota...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      // Calcula rota
+      await _locationService?.fetchCompleteRoute(
+        destinationRoomId: structureId,
+        mode: TransportMode.walking,
+      );
+
+      Get.back(); // Fecha loading
+
+      if (_locationService?.activeRoute.value == null) {
+        _showError('Não foi possível calcular a rota');
+        return;
+      }
+
+      // Confirma navegação
+      final shouldNavigate = await _showAutoNavigationDialog();
+      
+      if (shouldNavigate == true) {
+        _locationService?.isNavigating.value = true;
+        _showSuccess('Navegação iniciada! Siga a rota azul no mapa');
+      }
+      
+    } catch (e) {
+      Get.back(); // Fecha loading em caso de erro
+      _showError('Erro ao calcular rota: $e');
+    }
+  }
+
+  /// Dialog de confirmação de navegação automática
+  Future<bool?> _showAutoNavigationDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3C3CC0).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.navigation, color: Color(0xFF3C3CC0)),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Rota Calculada')),
+          ],
+        ),
+        content: const Text(
+          'A rota até a sala foi calculada. Deseja iniciar a navegação?',
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey[800],
+              textStyle: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            child: const Text('Não'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3C3CC0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Sim, navegar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Verifica se é visitante
@@ -118,7 +270,6 @@ class _HomePageState extends State<HomePage> {
       return authService.currentUser.value == null ||
              (Get.arguments?['visitor'] == true);
     } catch (e) {
-      print('[HomePage] Erro ao verificar visitante: $e');
       return true; // Assume visitante em caso de erro
     }
   }
@@ -363,16 +514,12 @@ class _HomePageState extends State<HomePage> {
       final isNavigating = _locationService?.isNavigating.value ?? false;
       if (!isNavigating) return const SizedBox.shrink();
 
-      // Usa APENAS os andares percorridos pela rota (floorsTraversed)
-      // NÃO usa todos os andares da estrutura, apenas os que a rota realmente percorre
       final currentRoute = _locationService?.activeRoute.value;
       final originalRoute = _locationService?.originalRoute;
       
-      // Prefere usar a rota original completa para ter os andares corretos
       final routeToUse = originalRoute ?? currentRoute;
       List<int> floors = routeToUse?.floorsTraversed ?? [];
       
-      // Se não encontrou na rota, tenta na estrutura como fallback
       if (floors.isEmpty) {
         final nearest = _locationService?.nearestStructure.value;
         if (nearest != null) {
@@ -413,18 +560,6 @@ class _HomePageState extends State<HomePage> {
       );
     });
   }
-
-  /// Verifica se está visualizando um andar específico (rota filtrada)
-  bool _isViewingSpecificFloor() {
-    final route = _locationService?.activeRoute.value;
-    if (route == null) return false;
-    
-    // Se a rota tem menos segmentos que o esperado para uma rota completa,
-    // provavelmente está filtrada por andar
-    // Uma rota completa geralmente tem: external + internal + transition + internal
-    return route.segments.length < 3;
-  }
-
 
   /// Botão de seleção de andar (quando não navegando)
   Widget _buildFloorSelectionButton() {
@@ -483,11 +618,12 @@ class _HomePageState extends State<HomePage> {
     final selected = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Escolha o andar para navegação'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: floors.map((floor) => ListTile(
-            title: Text('Andar $floor'),
+            title: Text('Andar $floor', style: const TextStyle(color: Colors.white)),
             onTap: () => Navigator.of(context).pop(floor),
           )).toList(),
         ),
@@ -501,25 +637,19 @@ class _HomePageState extends State<HomePage> {
 
   /// Atualiza andar da navegação
   Future<void> _updateNavigationFloor(int floor) async {
-    // Se for o térreo (0), restaura a rota completa
-    // Caso contrário, mostra apenas a rota interna daquele andar
     if (floor == 0) {
-      // Térreo: restaura a rota completa (externa + internas até o primeiro andar)
       _locationService?.restoreFullRoute();
       _updateRoomsForFloor(floor);
       _showSnackBar('Exibindo rota completa');
       return;
     }
 
-    // Para outros andares: mostra apenas a rota interna daquele andar
     final originalRoute = _locationService?.originalRoute;
     final currentRoute = _locationService?.activeRoute.value;
     
-    // Prefere usar a rota original completa para ter todos os segmentos
     final routeToUse = originalRoute ?? currentRoute;
     if (routeToUse == null) return;
 
-    // Busca segmentos do andar na rota completa
     final floorSegments = routeToUse.segmentsForFloor(floor);
     
     if (floorSegments.isEmpty) {
@@ -527,7 +657,6 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // Inclui também segmentos de transição que conectam ao andar
     final transitionSegments = routeToUse.segments
         .where((seg) => 
           seg.type == RouteSegmentType.transition && 
@@ -535,20 +664,16 @@ class _HomePageState extends State<HomePage> {
         )
         .toList();
 
-    // Combina segmentos do andar com transições relevantes
     final allSegments = <RouteSegment>[];
     
-    // Adiciona transições antes do andar
     for (final trans in transitionSegments) {
       if (trans.toFloor == floor && !allSegments.contains(trans)) {
         allSegments.add(trans);
       }
     }
     
-    // Adiciona segmentos do andar
     allSegments.addAll(floorSegments);
     
-    // Adiciona transições após o andar
     for (final trans in transitionSegments) {
       if (trans.fromFloor == floor && !allSegments.contains(trans)) {
         allSegments.add(trans);
@@ -571,9 +696,7 @@ class _HomePageState extends State<HomePage> {
       summary: routeToUse.summary,
     );
 
-    // Atualizar salas do andar
     _updateRoomsForFloor(floor);
-    
     _showSnackBar('Exibindo rota do andar $floor');
   }
 
@@ -582,7 +705,6 @@ class _HomePageState extends State<HomePage> {
     final nearest = _locationService?.nearestStructure.value;
     final roomsByFloor = nearest?['roomsByFloor'] as Map<String, dynamic>?;
     
-    // Limpa as salas primeiro para evitar desenhar salas de outros andares
     _locationService?.roomsOnFloor.clear();
     
     if (roomsByFloor != null) {
@@ -623,11 +745,12 @@ class _HomePageState extends State<HomePage> {
     final selected = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Escolha o andar'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: floors.map((floor) => ListTile(
-            title: Text('Andar $floor'),
+            title: Text('Andar $floor', style: const TextStyle(color: Colors.white)),
             onTap: () => Navigator.of(context).pop(floor),
           )).toList(),
         ),
@@ -682,15 +805,8 @@ class _HomePageState extends State<HomePage> {
     return List<int>.from(floors);
   }
 
-  double _calculatePathDistance(List<LatLng> path) {
-    double distance = 0.0;
-    for (int i = 1; i < path.length; i++) {
-      distance += Distance().as(LengthUnit.Meter, path[i - 1], path[i]);
-    }
-    return distance;
-  }
-
   void _showSnackBar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );

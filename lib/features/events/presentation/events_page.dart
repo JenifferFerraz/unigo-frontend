@@ -86,7 +86,10 @@ class _EventsPageState extends State<EventsPage> {
                     itemCount: events.length,
                     itemBuilder: (context, index) {
                       final event = events[index];
-                      return EventCard(event: event);
+                      final isEsports = _isEsportsEvent(event);
+                      return isEsports
+                          ? EsportsEventCard(event: event)
+                          : EventCard(event: event);
                     },
                   );
                 },
@@ -96,6 +99,12 @@ class _EventsPageState extends State<EventsPage> {
         ),
       ),
     );
+  }
+
+  bool _isEsportsEvent(Event event) {
+    final keywords = ['e-sport', 'esport', 'gaming', 'torneio', 'campeonato'];
+    final searchText = '${event.title} ${event.location}'.toLowerCase();
+    return keywords.any((keyword) => searchText.contains(keyword));
   }
 }
 
@@ -137,20 +146,7 @@ class EventCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    // Abrir o link do evento
-                    if (await canLaunchUrl(Uri.parse(event.link!))) {
-                      await launchUrl(Uri.parse(event.link!), mode: LaunchMode.externalApplication);
-                    } else {
-                      Get.snackbar(
-                        'Erro',
-                        'Não foi possível abrir o link',
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: const Color(0xFF3C3CC0),
-                        colorText: Colors.white,
-                      );
-                    }
-                  },
+                  onPressed: () => _launchUrl(event.link!),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3C3CC0),
                     foregroundColor: Colors.white,
@@ -197,4 +193,255 @@ class EventCard extends StatelessWidget {
       ],
     );
   }
+
+  Future<void> _launchUrl(String url) async {
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      Get.snackbar(
+        'Erro',
+        'Não foi possível abrir o link',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFF3C3CC0),
+        colorText: Colors.white,
+      );
+    }
+  }
+}
+
+class EsportsEventCard extends StatelessWidget {
+  final Event event;
+
+  const EsportsEventCard({Key? key, required this.event}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1a1a2e),
+            Color(0xFF16213e),
+            Color(0xFF0f3460),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00d9ff).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: GridPatternPainter(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00d9ff), Color(0xFF00b4d8)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00d9ff).withOpacity(0.5),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    'E-SPORTS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color(0xFF00d9ff),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00d9ff).withOpacity(0.3),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    event.title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF00d9ff),
+                      letterSpacing: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: Color(0xFF00d9ff),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildEsportsInfoRow(Icons.location_city, event.city),
+                const SizedBox(height: 12),
+                _buildEsportsInfoRow(Icons.place, event.location),
+                const SizedBox(height: 12),
+                _buildEsportsInfoRow(Icons.calendar_today, event.date),
+                const SizedBox(height: 20),
+                if (event.link != null && event.link!.isNotEmpty)
+                  SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00d9ff), Color(0xFF00b4d8)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00d9ff).withOpacity(0.4),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () => _launchUrl(event.link!),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.sports_esports, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'INSCREVA-SE AGORA',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEsportsInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF00d9ff).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: const Color(0xFF00d9ff).withOpacity(0.3),
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: const Color(0xFF00d9ff),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _launchUrl(String url) async {
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      Get.snackbar(
+        'Erro',
+        'Não foi possível abrir o link',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+}
+
+
+class GridPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF00d9ff).withOpacity(0.1)
+      ..strokeWidth = 1;
+
+    const spacing = 30.0;
+
+    for (double i = 0; i < size.width; i += spacing) {
+      canvas.drawLine(
+        Offset(i, 0),
+        Offset(i, size.height),
+        paint,
+      );
+    }
+
+    for (double i = 0; i < size.height; i += spacing) {
+      canvas.drawLine(
+        Offset(0, i),
+        Offset(size.width, i),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

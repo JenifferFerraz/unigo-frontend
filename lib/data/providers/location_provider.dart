@@ -12,51 +12,34 @@ class LocationProvider extends GetConnect {
     httpClient.timeout = const Duration(seconds: 30);
   }
 
-  // ============ UNIFIED ROUTES API ============
-
-  /// Busca rota completa OU apenas estrutura (dependendo se 'start' é fornecido)
-  /// 
-  /// **COM start**: Retorna rota completa (externa + interna)
-  /// **SEM start**: Retorna apenas estrutura e salas (para visualização)
+ 
   Future<RouteResponse?> getCompleteRoute({
-    List<double>? start, // ✨ OPCIONAL agora
+    List<double>? start, 
     required int destinationRoomId,
     TransportMode mode = TransportMode.walking,
   }) async {
     try {
-      print('[Provider] getCompleteRoute chamado');
-      print('  destinationRoomId: $destinationRoomId');
-      print('  start: $start');
-      print('  mode: $mode');
+    
 
-      // Monta body da requisição
       final requestBody = <String, dynamic>{
         'destinationRoomId': destinationRoomId,
       };
 
-      // ✅ Só adiciona 'start' e 'mode' se houver localização
       if (start != null && start.length == 2) {
         requestBody['start'] = [start[0], start[1]];
         requestBody['mode'] = mode == TransportMode.driving ? 'driving' : 'walking';
-        print('[Provider] → Calculando ROTA COMPLETA');
-      } else {
-        print('[Provider] → Buscando APENAS ESTRUTURA');
-      }
+      } 
 
       final response = await post('/routes/complete', requestBody);
 
-      print('[Provider] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200 && response.body != null) {
         final data = response.body;
         
-        // Verifica se é modo "structure_only" (sem rota)
         final isStructureOnly = data['mode'] == 'structure_only';
 
         if (isStructureOnly) {
-          print('[Provider] ✓ Estrutura recebida (sem rota)');
           
-          // Retorna RouteResponse sem rota, apenas com estrutura
           return RouteResponse(
             success: true,
             route: null, // ← SEM ROTA
@@ -69,27 +52,21 @@ class LocationProvider extends GetConnect {
           );
         }
 
-        // Rota completa (modo normal)
-        print('[Provider] ✓ Rota completa recebida');
+     
         final routeResponse = RouteResponse.fromJson(data);
         
         if (routeResponse.success && routeResponse.route != null) {
-          print('  - Segmentos: ${routeResponse.route!.segments.length}');
-          print('  - Distância: ${routeResponse.route!.totalDistance.toStringAsFixed(0)}m');
           return routeResponse;
         }
       }
 
-      print('[Provider] ❌ Resposta inválida');
       return null;
     } catch (e, stack) {
-      print('[Provider] ❌ Erro: $e');
-      print(stack);
+   
       return null;
     }
   }
 
-  /// Helper para parse de roomsByFloor
   Map<String, List<Map<String, dynamic>>>? _parseRoomsByFloor(dynamic roomsByFloor) {
     if (roomsByFloor == null) return null;
 
@@ -108,13 +85,11 @@ class LocationProvider extends GetConnect {
 
       return result.isEmpty ? null : result;
     } catch (e) {
-      print('[Provider] Erro ao parse roomsByFloor: $e');
       return null;
     }
   }
 
-  /// Busca apenas rota interna (legacy - mantido para compatibilidade)
-  /// Endpoint: POST /api/routes/internal
+
   Future<Map<String, dynamic>?> getInternalRoute({
     required int structureId,
     required int floor,
@@ -138,9 +113,7 @@ class LocationProvider extends GetConnect {
     }
   }
 
-  // ============ STRUCTURES ============
 
-  /// Busca todas as estruturas
   Future<List<Structure>> getAllStructures() async {
     try {
       final response = await get('/structures');
@@ -154,7 +127,6 @@ class LocationProvider extends GetConnect {
     }
   }
 
-  /// Busca estruturas por query
   Future<List<Structure>> searchStructures(String query) async {
     try {
       final response = await get('/room/all?search=$query');
@@ -168,7 +140,6 @@ class LocationProvider extends GetConnect {
     }
   }
 
-  /// Busca estrutura por ID
   Future<Structure?> getStructureById(int id) async {
     try {
       final response = await get('/structures/$id');
@@ -181,9 +152,7 @@ class LocationProvider extends GetConnect {
     }
   }
 
-  // ============ ROOMS ============
 
-  /// Busca salas de uma estrutura em um andar específico
   Future<List<Map<String, dynamic>>> getRoomsByFloor({
     required int structureId,
     required int floor,
@@ -202,9 +171,6 @@ class LocationProvider extends GetConnect {
     }
   }
 
-  // ============ EXTERNAL ROUTES ============
-
-  /// Lista todas as rotas externas
   Future<List<Map<String, dynamic>>> getExternalRoutes({
     TransportMode? mode,
   }) async {
@@ -223,9 +189,7 @@ class LocationProvider extends GetConnect {
     }
   }
 
-  // ============ HEALTH CHECK ============
 
-  /// Verifica saúde da API
   Future<bool> healthCheck() async {
     try {
       final response = await get('/routes/health');
@@ -235,9 +199,7 @@ class LocationProvider extends GetConnect {
     }
   }
 
-  // ============ LEGACY METHODS (Compatibilidade) ============
 
-  /// Método legado - usar getCompleteRoute() para novas implementações
   @Deprecated('Use getCompleteRoute() para rotas unificadas')
   Future<NavigationRoute?> getNavigationRoute(
     LatLng start,
@@ -267,14 +229,12 @@ class LocationProvider extends GetConnect {
     }
   }
 
-  /// Método legado para buscar localizações
   @Deprecated('Use searchStructures()')
   Future<List<dynamic>> searchLocations(String query) async {
     final structures = await searchStructures(query);
     return structures.map((s) => s.toJson()).toList();
   }
 
-  /// Método legado para próximas aulas
   @Deprecated('Funcionalidade movida para outro serviço')
   Future<List<dynamic>> getUpcomingClasses() async {
     return [];

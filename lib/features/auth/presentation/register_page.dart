@@ -159,14 +159,7 @@ class RegisterPage extends GetView<AuthService> {
                               selectedCourse.value == null ||
                               selectedShift.value == null ||
                               !termsAccepted.value) {
-                            print('[REGISTER ERROR] Campos obrigatórios faltando:');
-                            print('name: ${nameController.text}');
-                            print('email: ${emailController.text}');
-                            print('password: ${passwordController.text}');
-                            print('studentId: ${studentIdController.text}');
-                            print('selectedCourse: ${selectedCourse.value}');
-                            print('selectedShift: ${selectedShift.value}');
-                            print('termsAccepted: ${termsAccepted.value}');
+                          
                             Get.snackbar(
                               'Campos Incompletos',
                               'Por favor, preencha todos os campos obrigatórios e aceite os Termos de Uso',
@@ -180,10 +173,7 @@ class RegisterPage extends GetView<AuthService> {
                           if (_hasInjection(nameController.text) ||
                               _hasInjection(emailController.text) ||
                               _hasInjection(passwordController.text)) {
-                            print('[REGISTER ERROR] SQL/HTML injection detectado');
-                            print('name: ${nameController.text}');
-                            print('email: ${emailController.text}');
-                            print('password: ${passwordController.text}');
+                           
                             Get.snackbar(
                               'Valor inválido',
                               'Os campos não podem conter comandos SQL ou HTML.',
@@ -195,7 +185,6 @@ class RegisterPage extends GetView<AuthService> {
                             return;
                           }
                           if (passwordController.text.length < 6) {
-                            print('[REGISTER ERROR] Senha muito curta: ${passwordController.text.length} caracteres');
                             Get.snackbar(
                               'Senha muito curta',
                               'A senha deve ter pelo menos 6 caracteres.',

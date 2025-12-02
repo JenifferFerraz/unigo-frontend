@@ -12,13 +12,14 @@ class ExamService {
     headers: {'Content-Type': 'application/json'},
   ));
 
-  Future<List<Map<String, dynamic>>> getExams({int? cycle, String? shift, int? month, int? year}) async {
+  Future<List<Map<String, dynamic>>> getExams({int? cycle, String? shift, int? month, int? year, String? courseId}) async {
     try {
       final query = <String, dynamic>{};
       if (cycle != null) query['cycle'] = cycle.toString();
       if (shift != null && shift.isNotEmpty) query['shift'] = shift;
       if (month != null) query['month'] = month.toString();
       if (year != null) query['year'] = year.toString();
+      if (courseId != null && courseId.isNotEmpty) query['courseId'] = courseId;
 
       final res = await _client.get('/exams', queryParameters: query);
       if (res.statusCode == 200) {

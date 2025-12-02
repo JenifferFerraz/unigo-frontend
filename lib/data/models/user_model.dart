@@ -46,6 +46,7 @@ class User {
   final String name;
   final String email;
   final String? role;
+  final int? courseId;
   final StudentProfile? studentProfile;
 
   User({
@@ -53,6 +54,7 @@ class User {
     required this.name,
     required this.email,
     this.role,
+    this.courseId,
     this.studentProfile,
   });
 
@@ -73,6 +75,7 @@ class User {
       name: json['name'],
       email: json['email'],
       role: json['role'],
+      courseId: json['courseId'],
       studentProfile: profile,
     );
   }
@@ -83,6 +86,7 @@ class User {
       'name': name,
       'email': email,
       'role': role,
+      'courseId': courseId,
       'studentProfile': studentProfile?.toJson(),
     };
   }
