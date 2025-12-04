@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import '../../../data/models/event_model.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../storage/token_storage.dart';
 import '../../home/presentation/components/sidebar.dart';
 import '../data/event_api_service.dart';
 
@@ -14,11 +17,84 @@ class EventsPage extends StatefulWidget {
 
 class _EventsPageState extends State<EventsPage> {
   late Future<List<Event>> _eventsFuture;
+  List<Map<String, dynamic>> _coursesData = [];
+  String? _selectedCourse;
+  bool _isLoading = false;
+
+  bool get _isAdmin {
+    final user = Get.find<AuthService>().currentUser.value;
+    return user != null && user.role == 'admin';
+  }
 
   @override
   void initState() {
     super.initState();
-    _eventsFuture = EventApiService().fetchEvents();
+    if (_isAdmin) {
+      _fetchCoursesForAdmin();
+    }
+    _setUserCourseAndLoad();
+  }
+
+  Future<void> _fetchCoursesForAdmin() async {
+    final service = EventApiService();
+    try {
+      final courses = await service.fetchCourses();
+      setState(() {
+        _coursesData = courses;
+        if (_coursesData.isNotEmpty && _selectedCourse == null) {
+          _selectedCourse = _coursesData[0]['id'].toString();
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _setUserCourseAndLoad() async {
+    final user = Get.find<AuthService>().currentUser.value;
+    if (user != null && !_isAdmin) {
+      _selectedCourse = user.courseId?.toString();
+      if (_selectedCourse == null || _selectedCourse!.isEmpty) {
+        try {
+          final courseId = await TokenStorage.getCourseId();
+          if (courseId != null && courseId.isNotEmpty) {
+            _selectedCourse = courseId;
+          } else {
+            if (mounted) {
+              Get.offAllNamed('/login');
+              return;
+            }
+          }
+        } catch (_) {
+          if (mounted) {
+            Get.offAllNamed('/login');
+            return;
+          }
+        }
+      }
+    }
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    setState(() => _isLoading = true);
+    try {
+      final service = EventApiService();
+      final events = await service.fetchEvents(courseId: _selectedCourse);
+      setState(() {
+        _eventsFuture = Future.value(events);
+        _isLoading = false;
+      });
+    } catch (err) {
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao carregar eventos: ${err.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -69,31 +145,54 @@ class _EventsPageState extends State<EventsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            Expanded(
-              child: FutureBuilder<List<Event>>(
-                future: _eventsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Center(child: Text('Erro ao carregar eventos'));
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(child: Text('Nenhum evento encontrado'));
-                  }
-                  final events = snapshot.data!;
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: events.length,
-                    itemBuilder: (context, index) {
-                      final event = events[index];
-                      final isEsports = _isEsportsEvent(event);
-                      return isEsports
-                          ? EsportsEventCard(event: event)
-                          : EventCard(event: event);
-                    },
-                  );
-                },
+            if (_isAdmin && _coursesData.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: DropdownButton<String>(
+                  value: _selectedCourse,
+                  hint: const Text('Filtrar por curso'),
+                  isExpanded: true,
+                  items: _coursesData.map((course) {
+                    return DropdownMenuItem(
+                      value: course['id'].toString(),
+                      child: Text(course['name'] ?? course['nome'] ?? ''),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCourse = value;
+                    });
+                    _loadEvents();
+                  },
+                ),
               ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : FutureBuilder<List<Event>>(
+                      future: _eventsFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        } else if (snapshot.hasError) {
+                          return Center(child: Text('Erro ao carregar eventos'));
+                        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Center(child: Text('Nenhum evento encontrado'));
+                        }
+                        final events = snapshot.data!;
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: events.length,
+                          itemBuilder: (context, index) {
+                            final event = events[index];
+                            final isEsports = _isEsportsEvent(event);
+                            return isEsports
+                                ? EsportsEventCard(event: event)
+                                : EventCard(event: event);
+                          },
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -112,6 +211,23 @@ class EventCard extends StatelessWidget {
   final Event event;
 
   const EventCard({Key? key, required this.event}) : super(key: key);
+
+  String _formatDateRange() {
+    try {
+      final start = DateTime.parse(event.startDate ?? '');
+      final end = event.endDate != null ? DateTime.parse(event.endDate!) : null;
+      
+      final formatter = DateFormat('dd/MM/yyyy');
+      
+      if (end != null && start != end) {
+        return '${formatter.format(start)} - ${formatter.format(end)}';
+      } else {
+        return formatter.format(start);
+      }
+    } catch (e) {
+      return event.startDate ?? 'Data não disponível';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,12 +251,22 @@ class EventCard extends StatelessWidget {
                 color: Color(0xFF3C3CC0),
               ),
             ),
+            if (event.description != null && event.description!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                event.description!,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF666666),
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.location_city, 'Cidade: ${event.city}'),
-            const SizedBox(height: 8),
             _buildInfoRow(Icons.place, 'Local: ${event.location}'),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.calendar_today, 'Data: ${event.date}'),
+            _buildInfoRow(Icons.calendar_today, 'Data: ${_formatDateRange()}'),
             const SizedBox(height: 16),
             if (event.link != null && event.link!.isNotEmpty)
               SizedBox(
@@ -213,6 +339,23 @@ class EsportsEventCard extends StatelessWidget {
   final Event event;
 
   const EsportsEventCard({Key? key, required this.event}) : super(key: key);
+
+  String _formatDateRange() {
+    try {
+      final start = DateTime.parse(event.startDate ?? '');
+      final end = event.endDate != null ? DateTime.parse(event.endDate!) : null;
+      
+      final formatter = DateFormat('dd/MM/yyyy');
+      
+      if (end != null && start != end) {
+        return '${formatter.format(start)} - ${formatter.format(end)}';
+      } else {
+        return formatter.format(start);
+      }
+    } catch (e) {
+      return event.startDate ?? 'Data não disponível';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -306,12 +449,22 @@ class EsportsEventCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (event.description != null && event.description!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    event.description!,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 const SizedBox(height: 20),
-                _buildEsportsInfoRow(Icons.location_city, event.city),
-                const SizedBox(height: 12),
                 _buildEsportsInfoRow(Icons.place, event.location),
                 const SizedBox(height: 12),
-                _buildEsportsInfoRow(Icons.calendar_today, event.date),
+                _buildEsportsInfoRow(Icons.calendar_today, _formatDateRange()),
                 const SizedBox(height: 20),
                 if (event.link != null && event.link!.isNotEmpty)
                   SizedBox(
@@ -414,7 +567,6 @@ class EsportsEventCard extends StatelessWidget {
     }
   }
 }
-
 
 class GridPatternPainter extends CustomPainter {
   @override

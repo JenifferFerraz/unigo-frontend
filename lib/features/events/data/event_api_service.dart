@@ -15,15 +15,21 @@ class EventApiService {
               headers: {'Content-Type': 'application/json'},
             ));
 
-  Future<List<Event>> fetchEvents() async {
+  Future<List<Event>> fetchEvents({String? courseId}) async {
     final token = await TokenStorage.getToken();
     final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';
     }
 
+    final query = <String, dynamic>{};
+    if (courseId != null && courseId.isNotEmpty) {
+      query['courseId'] = courseId;
+    }
+
     final res = await _client.get(
       '/events',
+      queryParameters: query,
       options: Options(headers: headers),
     );
 
@@ -32,5 +38,23 @@ class EventApiService {
       return data.map((e) => Event.fromJson(e)).toList();
     }
     throw Exception('Erro ao buscar eventos');
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCourses() async {
+    try {
+      final token = await TokenStorage.getToken();
+      final dio = Dio(BaseOptions(
+        baseUrl: EnvService.apiBaseUrl,
+        headers: {'Authorization': 'Bearer $token'},
+      ));
+      final res = await dio.get('/api');
+      if (res.statusCode == 200 && res.data is List) {
+        return List<Map<String, dynamic>>.from(res.data);
+      }
+      return [];
+    } catch (e) {
+      print('Erro ao buscar cursos: $e');
+      return [];
+    }
   }
 }

@@ -9,6 +9,205 @@ class AdminUploadService {
   final Dio _dio;
   AdminUploadService([Dio? dio]) : _dio = dio ?? Dio();
 
+  /// Buscar provas recentes
+  Future<List<Map<String, dynamic>>> getRecentExams() async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/exams';
+    final response = await _dio.get(
+      url,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
+  /// Buscar horários recentes
+  Future<List<Map<String, dynamic>>> getRecentSchedules() async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/schedules';
+    final response = await _dio.get(
+      url,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    
+    // O backend retorna: {periods: 0, schedules: [...]}
+    // Precisamos extrair apenas a lista de schedules
+    if (response.data is Map && response.data.containsKey('schedules')) {
+      return List<Map<String, dynamic>>.from(response.data['schedules']);
+    }
+    
+    // Fallback: se vier como lista diretamente
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
+  /// Buscar eventos recentes
+  Future<List<Map<String, dynamic>>> getRecentEvents() async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/events';
+    final response = await _dio.get(
+      url,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
+  /// Buscar calendário recente
+  Future<List<Map<String, dynamic>>> getRecentCalendars() async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/api/academic-calendar';
+    final response = await _dio.get(
+      url,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
+  Future<Map<String, dynamic>> updateExam({
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/exams/$id';
+    final response = await _dio.patch(
+      url,
+      data: data,
+      options: Options(
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Atualiza dados de um horário existente
+  Future<Map<String, dynamic>> updateSchedule({
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/schedules/$id';
+    final response = await _dio.put(
+      url,
+      data: data,
+      options: Options(
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Atualiza dados de um evento existente
+  Future<Map<String, dynamic>> updateEvent({
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/events/$id';
+    final response = await _dio.patch(
+      url,
+      data: data,
+      options: Options(
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Deleta uma prova existente
+  Future<void> deleteExam(String id) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/exams/$id';
+    await _dio.delete(
+      url,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+  }
+
+  /// Deleta um horário existente
+  Future<void> deleteSchedule(String id) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/schedules/$id';
+    await _dio.delete(
+      url,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+  }
+
+  /// Deleta um evento existente
+  Future<void> deleteEvent(String id) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/events/$id';
+    await _dio.delete(
+      url,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+  }
+
+  /// Deleta um evento do calendário existente
+  Future<void> deleteCalendar(String id) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/api/academic-calendar/$id';
+    await _dio.delete(
+      url,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+  }
+
+  /// Atualiza dados de um calendário existente
+  Future<Map<String, dynamic>> updateCalendar({
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) throw Exception('Token não encontrado');
+    final url = EnvService.apiBaseUrl + '/api/academic-calendar/$id';
+    final response = await _dio.put(
+      url,
+      data: data,
+      options: Options(
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<Response> uploadSpreadsheet({
     required String endpoint,
     required PlatformFile file,

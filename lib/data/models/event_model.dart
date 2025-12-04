@@ -1,34 +1,40 @@
 class Event {
   final int id;
   final String title;
-  final String city;
-  final String location;
-  final String date;
   final String? description;
-  final bool isSubscribed;
+  final String? startDate;
+  final String? endDate;
+  final String location;
+  final bool isActive;
   final String? link;
+  final String? createdAt;
+  final String? updatedAt;
 
   Event({
     required this.id,
     required this.title,
-    required this.city,
-    required this.location,
-    required this.date,
     this.description,
-    this.isSubscribed = false,
+    this.startDate,
+    this.endDate,
+    required this.location,
+    this.isActive = true,
     this.link,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
       id: json['id'] ?? 0,
       title: json['title'] ?? '',
-      city: json['city'] ?? '',
-      location: json['location'] ?? '',
-      date: json['date'] ?? '',
       description: json['description'],
-      isSubscribed: json['isSubscribed'] ?? false,
+      startDate: json['startDate'],
+      endDate: json['endDate'],
+      location: json['location'] ?? '',
+      isActive: json['isActive'] ?? true,
       link: json['link'],
+      createdAt: json['createdAt'],
+      updatedAt: json['updatedAt'],
     );
   }
 
@@ -36,34 +42,40 @@ class Event {
     return {
       'id': id,
       'title': title,
-      'city': city,
-      'location': location,
-      'date': date,
       'description': description,
-      'isSubscribed': isSubscribed,
+      'startDate': startDate,
+      'endDate': endDate,
+      'location': location,
+      'isActive': isActive,
       'link': link,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
     };
   }
 
   Event copyWith({
     int? id,
     String? title,
-    String? city,
-    String? location,
-    String? date,
     String? description,
-    bool? isSubscribed,
+    String? startDate,
+    String? endDate,
+    String? location,
+    bool? isActive,
     String? link,
+    String? createdAt,
+    String? updatedAt,
   }) {
     return Event(
       id: id ?? this.id,
       title: title ?? this.title,
-      city: city ?? this.city,
-      location: location ?? this.location,
-      date: date ?? this.date,
       description: description ?? this.description,
-      isSubscribed: isSubscribed ?? this.isSubscribed,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      location: location ?? this.location,
+      isActive: isActive ?? this.isActive,
       link: link ?? this.link,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

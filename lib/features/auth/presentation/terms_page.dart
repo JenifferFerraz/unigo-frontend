@@ -7,6 +7,7 @@ import '../../../core/atoms/buttons/primary_button.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../core/constants/app_colors.dart';
 import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TermsPage extends GetView<AuthService> {
   const TermsPage({Key? key}) : super(key: key);
@@ -52,7 +53,7 @@ class TermsPage extends GetView<AuthService> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Última atualização: 13/04/2025\n',
+                          'Última atualização: 13/12/2025\n',
                           style: TextStyle(
                             color: Colors.grey,
                             fontSize: 14,
@@ -102,14 +103,37 @@ class TermsPage extends GetView<AuthService> {
                         ),
                         _buildSection(
                           '9. Suporte',
-                          'Em caso de dúvidas ou problemas, entre em contato pelo e-mail: [seuemail@dominio.com]',
+                          'Em caso de dúvidas ou problemas, entre em contato pelo e-mail abaixo:',
+                        ),
+                        GestureDetector(
+                          onTap: () async {
+                            final Uri emailLaunchUri = Uri(
+                              scheme: 'mailto',
+                              path: 'contato.unigo@gmail.com',
+                            );
+                            if (await canLaunchUrl(emailLaunchUri)) {
+                              await launchUrl(emailLaunchUri);
+                            } else {
+                              Get.snackbar('Erro', 'Não foi possível abrir o app de e-mail');
+                            }
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.only(bottom: 16, left: 4),
+                            child: Text(
+                              'contato.unigo@gmail.com',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 20),
                       ],
                     ),
                   ),
                 ),
-                // ...existing code...
               ],
             ),
           ),
@@ -138,5 +162,4 @@ class TermsPage extends GetView<AuthService> {
     );
   }
 
-  // ...existing code...
 }
