@@ -63,31 +63,20 @@ class AuthService extends GetxService {
       
       
       final response = await dio.post('/users', data: requestData);
-      print('[REGISTER DEBUG] Backend response:');
-      print(response.data);
-      print('Status code: ${response.statusCode}');
+      
 
       if (response.statusCode == 201 && response.data != null && response.data['id'] != null) {
         final userData = response.data;
         try {
           currentUser.value = User.fromJson(userData);
         } catch (e) {
-          print('[REGISTER DEBUG] Erro ao converter User.fromJson: $e');
+          // Erro ao converter User.fromJson
         }
         await storage.saveUserData(userData);
         return true;
-      } else {
-        print('[REGISTER DEBUG] Falha na validação do response:');
-        print('response.data: ${response.data}');
-        print('response.statusCode: ${response.statusCode}');
-      }
+      } 
       return false;
     } on DioException catch (e) {
-      print('[REGISTER DEBUG] DioException: $e');
-      if (e.response != null) {
-        print('[REGISTER DEBUG] DioException response data: ${e.response?.data}');
-        print('[REGISTER DEBUG] DioException status code: ${e.response?.statusCode}');
-      }
       String errorMessage = 'Não foi possível criar a conta';
       if (e.response?.statusCode == 400 && e.response?.data != null) {
         if (e.response?.data['error'] != null) {
@@ -103,7 +92,6 @@ class AuthService extends GetxService {
       );
       return false;
     } catch (e) {
-      print('[REGISTER DEBUG] Exception: $e');
       Get.snackbar(
         'Erro',
         'Não foi possível criar a conta',
@@ -143,14 +131,12 @@ class AuthService extends GetxService {
         final locationService = Get.put(LocationService());
         await locationService.requestLocationPermission();
         
-        // 🔥 Inicializa e conecta WebSocket após login bem-sucedido
-        print('[AuthService] Inicializando WebSocket...');
+        // Inicializa e conecta WebSocket após login bem-sucedido
         if (Get.isRegistered<WebSocketService>()) {
           await Get.delete<WebSocketService>();
         }
         final ws = Get.put(WebSocketService());
         await ws.connect();
-        print('[AuthService] ✓ WebSocket conectado');
         
         return true;
       }
@@ -178,37 +164,25 @@ class AuthService extends GetxService {
 
   Future<void> logout() async {
     try {
-      print('[AuthService] Iniciando logout...');
       
-      // 1. Limpa dados de localização
       if (Get.isRegistered<LocationService>()) {
         final locationService = Get.find<LocationService>();
         locationService.clearAllData();
-        print('[AuthService] ✓ LocationService limpo');
       }
       
-      // 2. Desconecta e limpa WebSocket + SharedPreferences
       if (Get.isRegistered<WebSocketService>()) {
         final wsService = Get.find<WebSocketService>();
         await wsService.disconnect();
         await wsService.clearSessionId();
-        print('[AuthService] ✓ WebSocket desconectado e sessionId removido');
       }
       
-      // 3. Limpa dados de autenticação (FlutterSecureStorage)
       await storage.clearUserData();
-      print('[AuthService] ✓ Storage limpo (user_data e token)');
       
-      // 4. Limpa estado em memória
       currentUser.value = null;
-      print('[AuthService] ✓ CurrentUser limpo');
       
-      // 5. Navega para tela de seleção
       Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
-      print('[AuthService] ✓ Logout completo');
     } catch (e) {
-      print('[AuthService] ❌ Erro durante logout: $e');
-      // Mesmo com erro, força logout completo
+    
       try {
         await storage.clearUserData();
       } catch (_) {}
@@ -216,7 +190,6 @@ class AuthService extends GetxService {
       Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
     }
   }
-  /// Solicita permissão de localização ao usuário
 
   void _requestLocationPermission() async {
     final status = await Permission.location.request();
@@ -345,7 +318,6 @@ Future<void> handleLocationPermission() async {
       );
     }
   } catch (e) {
-    print('[AuthService] Erro ao solicitar permissão: $e');
     Get.snackbar(
       'Erro',
       'Ocorreu um erro ao solicitar permissão de localização',

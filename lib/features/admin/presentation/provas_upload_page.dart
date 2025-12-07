@@ -196,6 +196,7 @@ class _ProvasUploadPageState extends State<ProvasUploadPage> {
               TableColumn(label: 'Período', field: 'grade'),
               TableColumn(label: 'Turno', field: 'shift'),
               TableColumn(label: 'Ciclo', field: 'cycle'),
+              TableColumn(label: 'Curso ID', field: 'courseId'),
             ],
             onEdit: handleEdit,
             onDelete: handleDelete,
