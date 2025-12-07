@@ -20,6 +20,8 @@ migrate_working_dir/
 .idea/
 
 build/
+!build/web/
+!build/web/**
 
 
 **/doc/api/
