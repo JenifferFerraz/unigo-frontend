@@ -372,6 +372,7 @@ class LocationSearch extends GetWidget<LocationService> {
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3C3CC0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text(
               'Sim, substituir',
