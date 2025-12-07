@@ -55,7 +55,7 @@ class _ProvasUploadPageState extends State<ProvasUploadPage> {
           ],
         ),
         content: Text(
-          'Tem certeza que deseja deletar a prova "${item['title'] ?? item['subject'] ?? ''}"?\n\nEsta ação não pode ser desfeita.',
+          'Tem certeza que deseja deletar a prova "${item['subject'] ?? ''}"?\n\nEsta ação não pode ser desfeita.',
           style: const TextStyle(fontSize: 15),
         ),
         actions: [
@@ -108,18 +108,41 @@ class _ProvasUploadPageState extends State<ProvasUploadPage> {
   }
 
   Future<void> handleEdit(Map<String, dynamic> item) async {
-    final TextEditingController titleController = TextEditingController(text: item['title'] ?? '');
+    final TextEditingController subjectController = TextEditingController(text: item['subject'] ?? '');
     final TextEditingController dateController = TextEditingController(text: item['date'] ?? '');
+    final TextEditingController timeController = TextEditingController(text: item['time'] ?? '');
+    final TextEditingController gradeController = TextEditingController(text: item['grade'] ?? '');
+    
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Editar Prova'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Título')),
-            TextField(controller: dateController, decoration: const InputDecoration(labelText: 'Data')),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: subjectController,
+                decoration: const InputDecoration(labelText: 'Matéria'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: dateController,
+                decoration: const InputDecoration(labelText: 'Data (dd/mm/yyyy)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: timeController,
+                decoration: const InputDecoration(labelText: 'Horário'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: gradeController,
+                decoration: const InputDecoration(labelText: 'Período'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -132,12 +155,20 @@ class _ProvasUploadPageState extends State<ProvasUploadPage> {
               await service.updateExam(
                 id: item['id'].toString(),
                 data: {
-                  'title': titleController.text,
+                  'subject': subjectController.text,
                   'date': dateController.text,
+                  'time': timeController.text,
+                  'grade': gradeController.text,
                 },
               );
               Navigator.pop(context);
               fetchProvas();
+              Get.snackbar(
+                'Sucesso',
+                'Prova atualizada!',
+                backgroundColor: Colors.green[100],
+                colorText: Colors.green[900],
+              );
             },
             child: const Text('Salvar'),
           ),
@@ -158,10 +189,13 @@ class _ProvasUploadPageState extends State<ProvasUploadPage> {
             tableData: provas,
             tableColumns: const [
               TableColumn(label: 'ID', field: 'id'),
-              TableColumn(label: 'Título', field: 'title'),
+              TableColumn(label: 'Matéria', field: 'subject'),
               TableColumn(label: 'Data', field: 'date'),
-              TableColumn(label: 'Tipo', field: 'type'),
-              TableColumn(label: 'Descrição', field: 'description'),
+              TableColumn(label: 'Dia', field: 'day'),
+              TableColumn(label: 'Horário', field: 'time'),
+              TableColumn(label: 'Período', field: 'grade'),
+              TableColumn(label: 'Turno', field: 'shift'),
+              TableColumn(label: 'Ciclo', field: 'cycle'),
             ],
             onEdit: handleEdit,
             onDelete: handleDelete,
