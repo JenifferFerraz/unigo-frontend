@@ -365,7 +365,7 @@ class LocationSearch extends GetWidget<LocationService> {
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text(
               'Cancelar',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: Color(0xFF3C3CC0), fontWeight: FontWeight.w600),
             ),
           ),
           ElevatedButton(
