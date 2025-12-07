@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../../core/config/env_service.dart';
 
 class RouteDebugPage extends StatefulWidget {
   const RouteDebugPage({Key? key}) : super(key: key);
@@ -15,8 +16,8 @@ class RouteDebugPage extends StatefulWidget {
 }
 
 class _RouteDebugPageState extends State<RouteDebugPage> {
-  // 🔧 ALTERE PARA O IP DO SEU BACKEND
-  static const String _baseUrl = 'http://localhost:3000'; // Android Emulator
+  // Usa o EnvService para pegar a URL correta automaticamente
+  String get _baseUrl => EnvService.apiBaseUrl;
 
   final MapController _mapController = MapController();
   
