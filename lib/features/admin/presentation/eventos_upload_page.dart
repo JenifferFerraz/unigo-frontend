@@ -586,10 +586,9 @@ class _EventosUploadPageState extends State<EventosUploadPage> {
             instructions: 'Envie a planilha de eventos. Aceito: .xlsx, .xls, .csv',
             uploadEndpoint: '/upload/events',
             templateType: 'events',
+            onUploadSuccess: fetchEventos,
             tableData: eventos.map((e) {
               final newMap = Map<String, dynamic>.from(e);
-              // Adiciona campos formatados para exibição na tabela
-              // mas mantém os originais para edição
               if (e['startDate'] != null && e['startDate'].toString().isNotEmpty) {
                 try {
                   final dt = DateTime.parse(e['startDate']);

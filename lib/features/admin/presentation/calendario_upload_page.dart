@@ -382,6 +382,7 @@ class _CalendarioUploadPageState extends State<CalendarioUploadPage> {
             ],
             onEdit: handleEdit,
             onDelete: handleDelete,
+            onUploadSuccess: fetchCalendario,
           );
   }
 }

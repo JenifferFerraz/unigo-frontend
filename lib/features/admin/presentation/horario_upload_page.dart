@@ -431,7 +431,6 @@ class _HorarioUploadPageState extends State<HorarioUploadPage> {
     required List<String> items,
     required Function(String?) onChanged,
   }) {
-    // Verifica se o valor existe na lista
     final validValue = items.contains(value) ? value : null;
     
     return Container(
@@ -491,6 +490,7 @@ class _HorarioUploadPageState extends State<HorarioUploadPage> {
             ],
             onEdit: handleEdit,
             onDelete: handleDelete,
+            onUploadSuccess: fetchHorarios,
           );
   }
 }

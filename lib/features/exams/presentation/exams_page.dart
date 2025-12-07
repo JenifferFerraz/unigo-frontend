@@ -19,7 +19,6 @@ class _ExamsPageState extends State<ExamsPage> {
   List<int> _availableCycles = [];
   String _selectedShift = 'all';
   
-  // Filtro de curso (admin)
   List<Map<String, dynamic>> _coursesData = [];
   String? _selectedCourse;
   bool _isLoading = false;
@@ -114,8 +113,12 @@ class _ExamsPageState extends State<ExamsPage> {
     if (_selectedCourse == null) return Future.value([]);
     
     final int? cycle = _selectedCycle == 0 ? null : _selectedCycle;
-    final shift = _selectedShift == 'all' ? null : _selectedShift;
-    return _examService.getExams(cycle: cycle, shift: shift, courseId: _selectedCourse);
+    final String? shift = (_selectedShift == 'all' || _selectedShift.isEmpty) ? null : _selectedShift;
+    return _examService.getExams(
+      cycle: cycle, 
+      shift: shift, 
+      courseId: _selectedCourse,
+    );
   }
 
   @override
@@ -153,7 +156,6 @@ class _ExamsPageState extends State<ExamsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Filtro de curso (admin)
                     if (_isAdmin) ...[
                       if (_coursesData.isEmpty)
                         const Padding(
@@ -163,11 +165,11 @@ class _ExamsPageState extends State<ExamsPage> {
                       else
                         DropdownButtonFormField<String>(
                           value: _selectedCourse,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Curso',
-                            border: const OutlineInputBorder(),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            prefixIcon: const Icon(Icons.school, color: Color(0xFF3C3CC0)),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            prefixIcon: Icon(Icons.school, color: Color(0xFF3C3CC0)),
                           ),
                           items: _coursesData.map((course) {
                             return DropdownMenuItem<String>(
@@ -192,11 +194,11 @@ class _ExamsPageState extends State<ExamsPage> {
                     ],
                     DropdownButtonFormField<int>(
                       value: _selectedCycle,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Ciclo',
-                        border: const OutlineInputBorder(),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF3C3CC0)),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        prefixIcon: Icon(Icons.calendar_today, color: Color(0xFF3C3CC0)),
                       ),
                       items: [
                         const DropdownMenuItem(value: 0, child: Text('Todos')),
@@ -212,11 +214,11 @@ class _ExamsPageState extends State<ExamsPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: _selectedShift,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Turno',
-                        border: const OutlineInputBorder(),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        prefixIcon: const Icon(Icons.access_time, color: Color(0xFF3C3CC0)),
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        prefixIcon: Icon(Icons.access_time, color: Color(0xFF3C3CC0)),
                       ),
                       items: const [
                         DropdownMenuItem(value: 'all', child: Text('Todos horários')),
@@ -273,6 +275,19 @@ class _ExamsPageState extends State<ExamsPage> {
   }
 
   Widget _buildExamDay(String day, String date, List<Widget> items) {
+    String formattedDate = date;
+    try {
+      if (date.contains('-') && date.split('-').length == 3) {
+        final parts = date.split('-');
+        if (parts[0].length == 4) {
+          // Formato yyyy-MM-dd, converter para dd/MM/yyyy
+          formattedDate = '${parts[2]}/${parts[1]}/${parts[0]}';
+        }
+      }
+    } catch (_) {
+      // Se falhar, usa a data original
+    }
+    
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -283,7 +298,7 @@ class _ExamsPageState extends State<ExamsPage> {
               Expanded(child: Text(day, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
               ConstrainedBox(
                 constraints: const BoxConstraints(minWidth: 80, maxWidth: 140),
-                child: Text(date, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                child: Text(formattedDate, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               ),
             ],
           ),

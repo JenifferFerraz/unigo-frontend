@@ -11,6 +11,7 @@ import '../../home/presentation/components/sidebar.dart';
 
 typedef TableEditCallback = void Function(Map<String, dynamic> item);
 typedef TableDeleteCallback = void Function(Map<String, dynamic> item);
+typedef UploadSuccessCallback = void Function();
 
 class TableColumn {
   final String label;
@@ -26,6 +27,7 @@ class AdminSpreadsheetUpload extends StatefulWidget {
   final List<TableColumn>? tableColumns;
   final TableEditCallback? onEdit;
   final TableDeleteCallback? onDelete;
+  final UploadSuccessCallback? onUploadSuccess;
 
   const AdminSpreadsheetUpload({
     Key? key,
@@ -37,6 +39,7 @@ class AdminSpreadsheetUpload extends StatefulWidget {
     this.tableColumns,
     this.onEdit,
     this.onDelete,
+    this.onUploadSuccess,
   }) : super(key: key);
 
   @override
@@ -147,7 +150,25 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
       setState(() {
         _statusMessage = 'Upload concluído!\n'
             'Total: $totalRows | Sucesso: $successCount | Erros: $errorCount';
+        _pickedFile = null; // Limpa o arquivo após upload bem-sucedido
+        _preview = null;
       });
+
+      // Chama callback de sucesso para atualizar a lista
+      if (widget.onUploadSuccess != null && successCount > 0) {
+        widget.onUploadSuccess!();
+      }
+
+      // Mostra snackbar de sucesso
+      if (mounted && successCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ $successCount ${successCount == 1 ? 'registro importado' : 'registros importados'} com sucesso!'),
+            backgroundColor: Colors.green[700],
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       setState(() {
         _statusMessage = 'Erro ao enviar arquivo: $e';
@@ -507,51 +528,75 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: SingleChildScrollView(
-                              child: DataTable(
-                                headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
-                                columns: [
-                                  ...widget.tableColumns!.map((col) => DataColumn(label: Text(col.label))),
-                                  const DataColumn(label: Text('Ações', style: TextStyle(fontWeight: FontWeight.w600))),
-                                ],
-                                rows: widget.tableData!.map<DataRow>((item) {
-                                  return DataRow(cells: [
-                                    ...widget.tableColumns!.map((col) {
-                                      final value = item[col.field]?.toString() ?? '';
-                                      final isLongField = ['title', 'description', 'location', 'link'].contains(col.field);
-                                      return DataCell(
-                                        Text(
-                                          value,
-                                          maxLines: isLongField ? 1 : null,
-                                          overflow: isLongField ? TextOverflow.ellipsis : null,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                                  child: DataTable(
+                                    headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
+                                    columnSpacing: 24,
+                                    horizontalMargin: 16,
+                                    columns: [
+                                      ...widget.tableColumns!.map((col) => DataColumn(
+                                        label: Text(
+                                          col.label,
+                                          style: const TextStyle(fontWeight: FontWeight.w600),
                                         ),
-                                      );
+                                      )),
+                                      const DataColumn(
+                                        label: Text('Ações', style: TextStyle(fontWeight: FontWeight.w600)),
+                                      ),
+                                    ],
+                                    rows: widget.tableData!.map<DataRow>((item) {
+                                      return DataRow(cells: [
+                                        ...widget.tableColumns!.map((col) {
+                                          final value = item[col.field]?.toString() ?? '';
+                                          final isLongField = ['title', 'description', 'location', 'link', 'subject'].contains(col.field);
+                                          return DataCell(
+                                            ConstrainedBox(
+                                              constraints: BoxConstraints(
+                                                maxWidth: isLongField ? 200 : 150,
+                                              ),
+                                              child: Text(
+                                                value,
+                                                maxLines: isLongField ? 2 : 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                        DataCell(
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (widget.onEdit != null)
+                                                IconButton(
+                                                  icon: const Icon(Icons.edit_rounded, size: 20),
+                                                  color: appBlue,
+                                                  tooltip: 'Editar',
+                                                  onPressed: () => widget.onEdit!(item),
+                                                ),
+                                              if (widget.onDelete != null)
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete_rounded, size: 20),
+                                                  color: Colors.red[400],
+                                                  tooltip: 'Deletar',
+                                                  onPressed: () => widget.onDelete!(item),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ]);
                                     }).toList(),
-                                    DataCell(Row(
-                                      children: [
-                                        if (widget.onEdit != null)
-                                          IconButton(
-                                            icon: const Icon(Icons.edit_rounded, size: 20),
-                                            color: appBlue,
-                                            onPressed: () => widget.onEdit!(item),
-                                          ),
-                                        if (widget.onDelete != null)
-                                          IconButton(
-                                            icon: const Icon(Icons.delete_rounded, size: 20),
-                                            color: Colors.red[400],
-                                            onPressed: () => widget.onDelete!(item),
-                                          ),
-                                      ],
-                                    )),
-                                  ]);
-                                }).toList(),
-                              ),
-                            ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
-                      ),
+                      ),                       
                     ],
                   ),
                 ),
