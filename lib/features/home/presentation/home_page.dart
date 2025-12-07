@@ -96,20 +96,90 @@ class _HomePageState extends State<HomePage> {
     if (args == null) return;
 
     final roomId = args['roomId'] as int?;
+    final structureId = args['structureId'] as int?;
+    
+    print('[HomePage] Argumentos recebidos: roomId=$roomId, structureId=$structureId');
+    
     if (roomId != null) {
       await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted || _locationService == null) return;
+      
       try {
         final hasLocation = _locationService?.currentPosition.value != null;
+        
         if (hasLocation) {
-          await _fetchAndNavigateToStructure(roomId);
+          print('[HomePage] Com localização, calculando rota para roomId=$roomId');
+          await _fetchAndNavigateToRoom(roomId);
         } else {
-          await _fetchAndVisualizeStructure(roomId);
+          print('[HomePage] Sem localização, visualizando estrutura structureId=$structureId');
+          if (structureId != null) {
+            await _fetchAndVisualizeStructure(structureId);
+          } else {
+            _showError('Estrutura não especificada');
+          }
         }
       } catch (e) {
+        print('[HomePage] Erro ao processar navegação: $e');
         _showError('Erro ao iniciar navegação: $e');
       }
       return;
+    }
+  }
+
+  /// Busca e navega para uma sala específica
+  Future<void> _fetchAndNavigateToRoom(int roomId) async {
+    try {
+      // Verifica localização
+      if (_locationService?.currentPosition.value == null) {
+        _showError('Localização não disponível');
+        return;
+      }
+
+      // Mostra loading
+      Get.dialog(
+        const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Calculando rota...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      // Calcula rota usando roomId
+      await _locationService?.fetchCompleteRoute(
+        destinationRoomId: roomId,
+        mode: TransportMode.walking,
+      );
+
+      Get.back(); // Fecha loading
+
+      if (_locationService?.activeRoute.value == null) {
+        _showError('Não foi possível calcular a rota');
+        return;
+      }
+
+      // Confirma navegação
+      final shouldNavigate = await _showAutoNavigationDialog();
+      
+      if (shouldNavigate == true) {
+        _locationService?.isNavigating.value = true;
+        _showSuccess('Navegação iniciada!');
+      }
+      
+    } catch (e) {
+      Get.back(); // Fecha loading em caso de erro
+      print('[HomePage] Erro ao calcular rota para sala: $e');
+      _showError('Erro ao calcular rota: $e');
     }
   }
 
@@ -234,18 +304,18 @@ class _HomePageState extends State<HomePage> {
               child: const Icon(Icons.navigation, color: Color(0xFF3C3CC0)),
             ),
             const SizedBox(width: 12),
-            const Expanded(child: Text('Rota Calculada')),
+            const Expanded(child: Text('Rota Calculada', style: TextStyle(color: Colors.black87))),
           ],
         ),
         content: const Text(
           'A rota até a sala foi calculada. Deseja iniciar a navegação?',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(fontSize: 16, color: Colors.black87),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             style: TextButton.styleFrom(
-              foregroundColor: Colors.grey[800],
+              foregroundColor: Colors.black87,
               textStyle: const TextStyle(fontWeight: FontWeight.w600),
             ),
             child: const Text('Não'),
@@ -377,30 +447,32 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBody() {
     return Stack(
       children: [
-        // Mapa
         const SizedBox.expand(
           child: MapWidget(zoom: 15.0, showUserLocation: true),
         ),
 
-        // Busca de localização
         if (_showLocationSearch)
           Positioned(
             top: 16,
             left: 16,
             right: 16,
-            child: LocationSearch(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LocationSearch(),
+                _buildLocationBannerCompact(),
+              ],
+            ),
           ),
 
-        // Banner de localização desativada
-        _buildLocationBanner(),
+        if (!_showLocationSearch)
+          _buildLocationBanner(),
 
-        // Tab de feedback (apenas para visitantes)
         if (_isVisitor) const FeedbackTab(),
       ],
     );
   }
 
-  /// Banner de localização desativada
   Widget _buildLocationBanner() {
     return Obx(() {
       final position = _locationService?.currentPosition.value;
@@ -441,6 +513,62 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  /// Banner de localização compacto (abaixo da busca)
+  Widget _buildLocationBannerCompact() {
+    return Obx(() {
+      final position = _locationService?.currentPosition.value;
+      if (position != null) return const SizedBox.shrink();
+
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        decoration: BoxDecoration(
+          color: Colors.orange[100],
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        child: Row(
+          children: [
+            Icon(Icons.location_off, color: Colors.orange[800], size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Localização desativada',
+                style: TextStyle(
+                  color: Colors.orange[900],
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: _requestLocationPermission,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Ativar Agora',
+                style: TextStyle(
+                  color: Colors.orange[800],
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   /// Solicita permissão de localização
   Future<void> _requestLocationPermission() async {
     showDialog(
@@ -457,7 +585,6 @@ class _HomePageState extends State<HomePage> {
       if (permission == true) {
         await _locationService?.getCurrentLocation();
 
-        // Aguarda precisão adequada
         await _waitForAccurateLocation();
 
         _showSuccess('✓ Localização ativada com sucesso!');
@@ -529,7 +656,6 @@ class _HomePageState extends State<HomePage> {
 
       return Column(
         children: [
-          // Botão para parar navegação
           FloatingActionButton.extended(
             heroTag: "btnStopNav",
             onPressed: _stopNavigation,
@@ -542,7 +668,6 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 12),
 
-          // Botão para mudar andar (multi-andar)
           if (floors.length > 1) ...[
             FloatingActionButton.extended(
               heroTag: "btnChooseFloor",
@@ -561,7 +686,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  /// Botão de seleção de andar (quando não navegando)
   Widget _buildFloorSelectionButton() {
     return Obx(() {
       final isNavigating = _locationService?.isNavigating.value ?? false;
@@ -587,7 +711,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  /// Botão de busca
   Widget _buildSearchButton() {
     return FloatingActionButton(
       heroTag: "btnSearch",
@@ -619,11 +742,11 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Escolha o andar para navegação'),
+        title: const Text('Escolha o andar para navegação', style: TextStyle(color: Colors.black87)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: floors.map((floor) => ListTile(
-            title: Text('Andar $floor', style: const TextStyle(color: Colors.white)),
+            title: Text('Andar $floor', style: const TextStyle(color: Colors.black87, fontSize: 16)),
             onTap: () => Navigator.of(context).pop(floor),
           )).toList(),
         ),
@@ -746,11 +869,11 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Escolha o andar'),
+        title: const Text('Escolha o andar', style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: floors.map((floor) => ListTile(
-            title: Text('Andar $floor', style: const TextStyle(color: Colors.white)),
+            title: Text('Andar $floor', style: const TextStyle(color: Colors.black87, fontSize: 16)),
             onTap: () => Navigator.of(context).pop(floor),
           )).toList(),
         ),
@@ -758,24 +881,49 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (selected != null) {
-      await _notifyFloorSelection(selected, nearest['id']);
+      await _selectFloor(selected, nearest);
     }
   }
 
-  /// Notifica seleção de andar via WebSocket
-  Future<void> _notifyFloorSelection(int floor, int structureId) async {
+  /// Seleciona andar e atualiza visualização (com ou sem localização)
+  Future<void> _selectFloor(int floor, Map<String, dynamic> structure) async {
+    // Atualiza rooms do andar selecionado
+    _updateRoomsForFloorFromStructure(floor, structure);
+    
+    // Se tiver localização, notifica via WebSocket
     final position = _locationService?.currentPosition.value;
-    if (position == null) return;
+    if (position != null) {
+      try {
+        final ws = await _getWebSocket();
+        ws?.sendPosition(
+          position: [position.longitude, position.latitude],
+          structureId: structure['id'],
+          floor: floor,
+        );
+      } catch (e) {
+        print('[HomePage] Erro ao enviar posição: $e');
+      }
+    }
+    
+    _showSnackBar('Exibindo andar $floor');
+  }
 
-    try {
-      final ws = await _getWebSocket();
-      ws?.sendPosition(
-        position: [position.longitude, position.latitude],
-        structureId: structureId,
-        floor: floor,
-      );
-    } catch (e) {
-      print('[HomePage] Erro ao enviar posição: $e');
+  /// Atualiza rooms de um andar específico da estrutura
+  void _updateRoomsForFloorFromStructure(int floor, Map<String, dynamic> structure) {
+    final roomsByFloor = structure['roomsByFloor'] as Map<String, dynamic>?;
+    
+    _locationService?.roomsOnFloor.clear();
+    
+    if (roomsByFloor != null) {
+      final floorKey = floor.toString();
+      if (roomsByFloor.containsKey(floorKey) && roomsByFloor[floorKey] is List) {
+        final rooms = roomsByFloor[floorKey] as List;
+        if (rooms.isNotEmpty) {
+          _locationService?.roomsOnFloor.assignAll(
+            rooms.cast<Map<String, dynamic>>()
+          );
+        }
+      }
     }
   }
 

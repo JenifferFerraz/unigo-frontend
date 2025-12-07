@@ -227,7 +227,8 @@ class LocationSearch extends GetWidget<LocationService> {
           ElevatedButton.icon(
             onPressed: () => Navigator.of(ctx).pop('enable'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3C3CC0),
+              backgroundColor: const Color(0xFF4CAF50),
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             icon: const Icon(Icons.location_on),

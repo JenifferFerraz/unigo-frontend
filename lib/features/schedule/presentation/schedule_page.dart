@@ -218,10 +218,11 @@ class _SchedulePage extends State<SchedulePage> {
                     label: const Text('Ir para sala'),
                     onPressed: (structureId != null && structureId > 0 && roomId != null)
                         ? () {
-                            print('[SchedulePage] Botão Ir para sala clicado: location=$location, structureId=$structureId');
+                            print('[SchedulePage] Botão Ir para sala clicado: location=$location, roomId=$roomId, structureId=$structureId');
                             Get.toNamed(
-                              AppRoutes.LOCATION_SEARCH,
+                              AppRoutes.HOME,
                               arguments: {
+                                'roomId': roomId,
                                 'structureId': structureId,
                               },
                             );

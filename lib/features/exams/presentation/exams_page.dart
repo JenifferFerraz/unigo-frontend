@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/services/exam_service.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../storage/token_storage.dart';
 import '../../home/presentation/components/sidebar.dart';
+import '../../events/data/event_api_service.dart';
 
 class ExamsPage extends StatefulWidget {
   const ExamsPage({Key? key}) : super(key: key);
@@ -14,17 +17,81 @@ class _ExamsPageState extends State<ExamsPage> {
   final ExamService _examService = ExamService();
   int _selectedCycle = 0; 
   List<int> _availableCycles = [];
+  String _selectedShift = 'all';
+  
+  // Filtro de curso (admin)
+  List<Map<String, dynamic>> _coursesData = [];
+  String? _selectedCourse;
+  bool _isLoading = false;
+
+  bool get _isAdmin {
+    final user = Get.find<AuthService>().currentUser.value;
+    return user != null && user.role == 'admin';
+  }
 
   @override
   void initState() {
     super.initState();
-    _discoverCycles();
+    _initializePage();
   }
-  String _selectedShift = 'all'; 
+
+  Future<void> _initializePage() async {
+    if (_isAdmin) {
+      await _fetchCoursesForAdmin();
+    } else {
+      await _setUserCourseAndLoad();
+    }
+  }
+
+  Future<void> _fetchCoursesForAdmin() async {
+    final service = EventApiService();
+    try {
+      final courses = await service.fetchCourses();
+      setState(() {
+        _coursesData = courses;
+        if (_coursesData.isNotEmpty) {
+          _selectedCourse = _coursesData[0]['id'].toString();
+        }
+      });
+      if (_selectedCourse != null) {
+        await _discoverCycles();
+      }
+    } catch (e) {
+      print('Erro ao buscar cursos: $e');
+    }
+  }
+
+  Future<void> _setUserCourseAndLoad() async {
+    final user = Get.find<AuthService>().currentUser.value;
+    if (user != null) {
+      _selectedCourse = user.courseId?.toString();
+      if (_selectedCourse == null || _selectedCourse!.isEmpty) {
+        try {
+          final courseId = await TokenStorage.getCourseId();
+          if (courseId != null && courseId.isNotEmpty) {
+            _selectedCourse = courseId;
+          } else {
+            if (mounted) {
+              Get.offAllNamed('/login');
+              return;
+            }
+          }
+        } catch (_) {
+          if (mounted) {
+            Get.offAllNamed('/login');
+            return;
+          }
+        }
+      }
+    }
+    await _discoverCycles();
+  }
 
   Future<void> _discoverCycles() async {
+    if (_selectedCourse == null) return;
+    
     try {
-      final all = await _examService.getExams();
+      final all = await _examService.getExams(courseId: _selectedCourse);
       final set = <int>{};
       for (final e in all) {
         final c = e['cycle'];
@@ -38,18 +105,21 @@ class _ExamsPageState extends State<ExamsPage> {
       setState(() {
         _availableCycles = list;
       });
-    } catch (_) {}
+    } catch (e) {
+      print('Erro ao descobrir ciclos: $e');
+    }
   }
 
   Future<List<Map<String, dynamic>>> _loadExams() {
+    if (_selectedCourse == null) return Future.value([]);
+    
     final int? cycle = _selectedCycle == 0 ? null : _selectedCycle;
     final shift = _selectedShift == 'all' ? null : _selectedShift;
-    return _examService.getExams(cycle: cycle, shift: shift);
+    return _examService.getExams(cycle: cycle, shift: shift, courseId: _selectedCourse);
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: const Color(0xFF3C3CC0),
       appBar: AppBar(
@@ -75,7 +145,7 @@ class _ExamsPageState extends State<ExamsPage> {
             ],
           ),
           child: FutureBuilder<List<Map<String, dynamic>>>(
-            key: ValueKey('$_selectedCycle-$_selectedShift'),
+            key: ValueKey('$_selectedCycle-$_selectedShift-$_selectedCourse'),
             future: _loadExams(),
             builder: (context, snapshot) {
               final exams = snapshot.data ?? [];
@@ -83,11 +153,50 @@ class _ExamsPageState extends State<ExamsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Filtro de curso (admin)
+                    if (_isAdmin) ...[
+                      if (_coursesData.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else
+                        DropdownButtonFormField<String>(
+                          value: _selectedCourse,
+                          decoration: InputDecoration(
+                            labelText: 'Curso',
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            prefixIcon: const Icon(Icons.school, color: Color(0xFF3C3CC0)),
+                          ),
+                          items: _coursesData.map((course) {
+                            return DropdownMenuItem<String>(
+                              value: course['id'].toString(),
+                              child: Text(
+                                course['name'] ?? 'Sem nome',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setState(() {
+                              _selectedCourse = v;
+                              _selectedCycle = 0;
+                              _availableCycles = [];
+                            });
+                            _discoverCycles();
+                          },
+                        ),
+                      const SizedBox(height: 12),
+                    ],
                     DropdownButtonFormField<int>(
                       value: _selectedCycle,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: InputDecoration(
+                        labelText: 'Ciclo',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF3C3CC0)),
                       ),
                       items: [
                         const DropdownMenuItem(value: 0, child: Text('Todos')),
@@ -103,9 +212,11 @@ class _ExamsPageState extends State<ExamsPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: _selectedShift,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: InputDecoration(
+                        labelText: 'Turno',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        prefixIcon: const Icon(Icons.access_time, color: Color(0xFF3C3CC0)),
                       ),
                       items: const [
                         DropdownMenuItem(value: 'all', child: Text('Todos horários')),

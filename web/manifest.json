@@ -1,11 +1,11 @@
 {
-    "name": "unigo_mobile",
-    "short_name": "unigo_mobile",
+    "name": "UniGo - Sistema Universitário",
+    "short_name": "UniGo",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#3C3CC0",
+    "theme_color": "#3C3CC0",
+    "description": "Sistema de Navegação e Gerenciamento Universitário - UniGo",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
