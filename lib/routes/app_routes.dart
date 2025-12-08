@@ -77,7 +77,6 @@ abstract class AppRoutes {
             return ConfirmResetPasswordPage();
           }
         }
-        // Mostra a página de solicitação se não tiver token
         return const ResetPasswordPage();
       },
       middlewares: [GuestMiddleware()],
@@ -94,7 +93,6 @@ abstract class AppRoutes {
     GetPage(
       name: FEEDBACK,
       page: () => const FeedbackPage(),
-      // Disponível também para visitantes; mantém argumentos para voltar ao modo visitante
     ),
     GetPage(
       name: SCHEDULE,
@@ -149,7 +147,6 @@ abstract class AppRoutes {
     GetPage(
       name: FEEDBACK,
       page: () => const FeedbackPage(),
-      // Disponível também para visitantes; mantém argumentos para voltar ao modo visitante
     ),
     GetPage(
       name: DEBUG_ROUTE,

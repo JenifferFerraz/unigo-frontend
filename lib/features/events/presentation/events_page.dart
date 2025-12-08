@@ -16,7 +16,7 @@ class EventsPage extends StatefulWidget {
 }
 
 class _EventsPageState extends State<EventsPage> {
-  late Future<List<Event>> _eventsFuture;
+  Future<List<Event>>? _eventsFuture;
   List<Map<String, dynamic>> _coursesData = [];
   String? _selectedCourse;
   bool _isLoading = false;
@@ -169,18 +169,20 @@ class _EventsPageState extends State<EventsPage> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : FutureBuilder<List<Event>>(
-                      future: _eventsFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        } else if (snapshot.hasError) {
-                          return Center(child: Text('Erro ao carregar eventos'));
-                        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Center(child: Text('Nenhum evento encontrado'));
-                        }
-                        final events = snapshot.data!;
-                        return ListView.builder(
+                  : _eventsFuture == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : FutureBuilder<List<Event>>(
+                          future: _eventsFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator());
+                            } else if (snapshot.hasError) {
+                              return Center(child: Text('Erro ao carregar eventos'));
+                            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                              return Center(child: Text('Nenhum evento encontrado'));
+                            }
+                            final events = snapshot.data!;
+                            return ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: events.length,
                           itemBuilder: (context, index) {
