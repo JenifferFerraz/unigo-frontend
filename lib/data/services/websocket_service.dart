@@ -43,10 +43,7 @@ class WebSocketService extends GetxService {
         onDone: () => isConnected.value = false,
         onError: (_) => isConnected.value = false,
       );
-      
-      print('[WebSocket] Conectado com sessão: $sessionId');
     } catch (e) {
-      print('[WebSocket] Erro ao conectar: $e');
       isConnected.value = false;
     }
   }
@@ -68,9 +65,7 @@ class WebSocketService extends GetxService {
   void _send(Map<String, dynamic> data) {
     try {
       _channel?.sink.add(jsonEncode(data));
-    } catch (e) {
-      print('[WebSocket] Erro ao enviar: $e');
-    }
+    } catch (e) {}
   }
 
   void _handleIncomingMessage(dynamic message) {
@@ -94,12 +89,9 @@ class WebSocketService extends GetxService {
           _handleStructureUpdate(data, locationService);
           break;
         case 'error':
-          print('[WebSocket] Erro do servidor: ${data['message']}');
           break;
       }
-    } catch (e) {
-      print('[WebSocket] Erro ao processar mensagem: $e');
-    }
+    } catch (e) {}
   }
 
   void _handleRoomsUpdate(Map<String, dynamic> data, LocationService service) {
@@ -132,9 +124,7 @@ class WebSocketService extends GetxService {
         _channel = null;
         isConnected.value = false;
       }
-    } catch (e) {
-      print('[WebSocket] Erro ao desconectar: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> clearSessionId() async {
