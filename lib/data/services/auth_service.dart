@@ -221,10 +221,29 @@ class AuthService extends GetxService {
 
       return response.statusCode == 200;
     } catch (e) {
+      String errorMessage = 'Ocorreu um erro ao enviar o email de recuperação';
+      
+      if (e is DioException) {
+        if (e.response?.data != null) {
+          // Tenta pegar a mensagem de erro do backend
+          final data = e.response?.data;
+          if (data is Map) {
+            if (data['message'] != null) {
+              errorMessage = data['message'].toString();
+            } else if (data['error'] != null) {
+              errorMessage = data['error'].toString();
+            }
+          }
+        }
+      }
+      
       Get.snackbar(
         'Erro',
-        'Ocorreu um erro ao enviar o email de recuperação',
+        errorMessage,
         snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
       );
       return false;
     } finally {
