@@ -71,24 +71,33 @@ class AuthService extends GetxService {
       return false;
     } on DioException catch (e) {
       String errorMessage = 'Não foi possível criar a conta';
-      if (e.response?.statusCode == 400 && e.response?.data != null) {
-        if (e.response?.data['error'] != null) {
+      
+      if (e.response?.data != null) {
+        // Tenta pegar a mensagem de erro do backend
+        if (e.response?.data['message'] != null) {
+          errorMessage = e.response?.data['message'];
+        } else if (e.response?.data['error'] != null) {
           errorMessage = e.response?.data['error'];
         }
       }
+      
       Get.snackbar(
-        'Erro',
+        'Erro no Cadastro',
         errorMessage,
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
+        duration: const Duration(seconds: 5),
       );
       return false;
     } catch (e) {
       Get.snackbar(
-        'Erro',
-        'Não foi possível criar a conta',
+        'Erro no Cadastro',
+        'Não foi possível criar a conta. Tente novamente.',
         snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
       );
       return false;
     } finally {

@@ -287,23 +287,14 @@ class RegisterPage extends GetView<AuthService> {
                             selectedGender.value = null;
                             await Future.delayed(const Duration(seconds: 2));
                             Get.offAllNamed(AppRoutes.LOGIN);
-                          } else {
-                            print('[REGISTER ERROR] controller.register retornou false');
-                            Get.snackbar(
-                              'Erro no Cadastro',
-                              'Ocorreu um erro ao criar sua conta. Tente novamente.',
-                              snackPosition: SnackPosition.BOTTOM,
-                              backgroundColor: Colors.red[100],
-                              colorText: Colors.red[900],
-                              duration: const Duration(seconds: 5),
-                            );
                           }
+                          // Se success == false, o erro já foi mostrado pelo auth_service
                         } catch (e) {
-                          print('[REGISTER ERROR] Exception: $e');
                           if (Get.isDialogOpen ?? false) Get.back();
+                          // Erro inesperado (não DioException)
                           Get.snackbar(
-                            'Erro no Cadastro',
-                            'Ocorreu um erro ao criar sua conta. Tente novamente.',
+                            'Erro Inesperado',
+                            'Ocorreu um erro inesperado. Tente novamente.',
                             snackPosition: SnackPosition.BOTTOM,
                             backgroundColor: Colors.red[100],
                             colorText: Colors.red[900],
