@@ -113,6 +113,11 @@ class NavigationRoute {
   });
 
   factory NavigationRoute.fromJson(Map<String, dynamic> json) {
+    print('[NavigationRoute.fromJson] Parsing route data...');
+    print('  totalDistance: ${json['totalDistance']}');
+    print('  estimatedTime: ${json['estimatedTime']}');
+    print('  segments: ${json['segments']?.length ?? 0}');
+    
     return NavigationRoute(
       segments: (json['segments'] as List?)
           ?.map((seg) => RouteSegment.fromJson(seg))

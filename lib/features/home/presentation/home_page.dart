@@ -949,6 +949,9 @@ class _HomePageState extends State<HomePage> {
     return Obx(() {
       final activeRoute = _locationService?.activeRoute.value;
       
+      // Debug: verificar se a rota existe
+      print('[RouteCard] activeRoute: ${activeRoute != null ? "exists" : "null"}');
+      
       if (activeRoute == null) {
         return const SizedBox.shrink();
       }
@@ -956,6 +959,9 @@ class _HomePageState extends State<HomePage> {
       final distance = activeRoute.totalDistance;
       final timeMinutes = activeRoute.estimatedTime;
       final mode = activeRoute.mode;
+
+      // Debug: imprimir valores
+      print('[RouteCard] distance: $distance, time: $timeMinutes, mode: $mode');
 
       // Formata distância
       String distanceText;
