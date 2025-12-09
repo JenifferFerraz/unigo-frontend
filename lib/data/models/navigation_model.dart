@@ -113,11 +113,6 @@ class NavigationRoute {
   });
 
   factory NavigationRoute.fromJson(Map<String, dynamic> json) {
-    print('[NavigationRoute.fromJson] Parsing route data...');
-    print('  totalDistance: ${json['totalDistance']}');
-    print('  estimatedTime: ${json['estimatedTime']}');
-    print('  segments: ${json['segments']?.length ?? 0}');
-    
     return NavigationRoute(
       segments: (json['segments'] as List?)
           ?.map((seg) => RouteSegment.fromJson(seg))
@@ -407,16 +402,10 @@ class RouteResponse {
 
   factory RouteResponse.fromJson(Map<String, dynamic> json) {
     try {
-      print('[RouteResponse] Parsing JSON...');
-      print('  success: ${json['success']}');
-      print('  mode: ${json['mode']}');
-      
       final isStructureOnly = json['mode'] == 'structure_only';
       
       if (isStructureOnly) {
         // ✨ Modo visualização: SEM rota
-        print('[RouteResponse] ✓ Modo: structure_only');
-        
         final data = json['data'] as Map<String, dynamic>?;
         
         return RouteResponse(
@@ -433,12 +422,9 @@ class RouteResponse {
       }
       
       // ✅ Modo navegação: COM rota
-      print('[RouteResponse] ✓ Modo: navegação completa');
-      
       final data = json['data'] as Map<String, dynamic>?;
       
       if (data == null) {
-        print('[RouteResponse] ⚠️ data é null');
         return RouteResponse(
           success: false,
           error: 'Dados da rota não encontrados',
@@ -454,9 +440,6 @@ class RouteResponse {
       );
       
     } catch (e, stack) {
-      print('[RouteResponse] ❌ Erro ao parse: $e');
-      print(stack);
-      
       return RouteResponse(
         success: false,
         error: 'Erro ao processar resposta: $e',

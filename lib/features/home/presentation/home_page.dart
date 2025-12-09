@@ -98,8 +98,6 @@ class _HomePageState extends State<HomePage> {
     final roomId = args['roomId'] as int?;
     final structureId = args['structureId'] as int?;
     
-    print('[HomePage] Argumentos recebidos: roomId=$roomId, structureId=$structureId');
-    
     if (roomId != null) {
       await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted || _locationService == null) return;
@@ -108,10 +106,8 @@ class _HomePageState extends State<HomePage> {
         final hasLocation = _locationService?.currentPosition.value != null;
         
         if (hasLocation) {
-          print('[HomePage] Com localização, calculando rota para roomId=$roomId');
           await _fetchAndNavigateToRoom(roomId);
         } else {
-          print('[HomePage] Sem localização, visualizando estrutura structureId=$structureId');
           if (structureId != null) {
             await _fetchAndVisualizeStructure(structureId);
           } else {
@@ -119,7 +115,6 @@ class _HomePageState extends State<HomePage> {
           }
         }
       } catch (e) {
-        print('[HomePage] Erro ao processar navegação: $e');
         _showError('Erro ao iniciar navegação: $e');
       }
       return;
@@ -178,7 +173,6 @@ class _HomePageState extends State<HomePage> {
       
     } catch (e) {
       Get.back(); // Fecha loading em caso de erro
-      print('[HomePage] Erro ao calcular rota para sala: $e');
       _showError('Erro ao calcular rota: $e');
     }
   }
@@ -900,9 +894,7 @@ class _HomePageState extends State<HomePage> {
           structureId: structure['id'],
           floor: floor,
         );
-      } catch (e) {
-        print('[HomePage] Erro ao enviar posição: $e');
-      }
+      } catch (e) {}
     }
     
     _showSnackBar('Exibindo andar $floor');
@@ -949,9 +941,6 @@ class _HomePageState extends State<HomePage> {
     return Obx(() {
       final activeRoute = _locationService?.activeRoute.value;
       
-      // Debug: verificar se a rota existe
-      print('[RouteCard] activeRoute: ${activeRoute != null ? "exists" : "null"}');
-      
       if (activeRoute == null) {
         return const SizedBox.shrink();
       }
@@ -959,9 +948,6 @@ class _HomePageState extends State<HomePage> {
       final distance = activeRoute.totalDistance;
       final timeMinutes = activeRoute.estimatedTime;
       final mode = activeRoute.mode;
-
-      // Debug: imprimir valores
-      print('[RouteCard] distance: $distance, time: $timeMinutes, mode: $mode');
 
       // Formata distância
       String distanceText;
@@ -997,134 +983,44 @@ class _HomePageState extends State<HomePage> {
       }
 
       return Positioned(
-        bottom: _locationService?.isNavigating.value == true ? 200 : 100,
+        top: 16,
         left: 16,
         right: 16,
         child: Card(
-          elevation: 8,
+          elevation: 4,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Cabeçalho com modo de transporte
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: modeColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(modeIcon, color: modeColor, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      modeText,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: modeColor,
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3C3CC0).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'ROTA ATIVA',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF3C3CC0),
-                        ),
-                      ),
-                    ),
-                  ],
+                // Ícone do modo de transporte
+                Icon(modeIcon, color: modeColor, size: 20),
+                const SizedBox(width: 8),
+                // Distância
+                Icon(Icons.straighten, color: Colors.grey[600], size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  distanceText,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-                const SizedBox(height: 16),
-                // Informações de distância e tempo
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    // Distância
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.straighten,
-                              color: Color(0xFF3C3CC0),
-                              size: 28,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              distanceText,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF3C3CC0),
-                              ),
-                            ),
-                            const Text(
-                              'Distância',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Tempo estimado
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.access_time,
-                              color: Colors.orange,
-                              size: 28,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              timeText,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange,
-                              ),
-                            ),
-                            const Text(
-                              'Tempo Est.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                // Tempo
+                Icon(Icons.access_time, color: Colors.grey[600], size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  timeText,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
               ],
             ),
