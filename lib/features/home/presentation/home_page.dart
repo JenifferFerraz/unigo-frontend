@@ -983,47 +983,52 @@ class _HomePageState extends State<HomePage> {
       }
 
       return Positioned(
-        top: 16,
-        left: 16,
+        bottom: 90,
         right: 16,
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Ícone do modo de transporte
-                Icon(modeIcon, color: modeColor, size: 20),
-                const SizedBox(width: 8),
-                // Distância
-                Icon(Icons.straighten, color: Colors.grey[600], size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  distanceText,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(modeIcon, color: modeColor, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                distanceText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-                const SizedBox(width: 12),
-                // Tempo
-                Icon(Icons.access_time, color: Colors.grey[600], size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  timeText,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                '·',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                timeText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
           ),
         ),
       );
