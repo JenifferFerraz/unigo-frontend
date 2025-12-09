@@ -983,7 +983,7 @@ class _HomePageState extends State<HomePage> {
       }
 
       return Positioned(
-        bottom: 90,
+        bottom: 160,
         right: 16,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
