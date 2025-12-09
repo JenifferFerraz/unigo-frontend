@@ -66,13 +66,6 @@ class AuthService extends GetxService {
       
 
       if (response.statusCode == 201 && response.data != null && response.data['id'] != null) {
-        final userData = response.data;
-        try {
-          currentUser.value = User.fromJson(userData);
-        } catch (e) {
-          // Erro ao converter User.fromJson
-        }
-        await storage.saveUserData(userData);
         return true;
       } 
       return false;
