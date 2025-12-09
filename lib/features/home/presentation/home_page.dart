@@ -468,6 +468,9 @@ class _HomePageState extends State<HomePage> {
         if (!_showLocationSearch)
           _buildLocationBanner(),
 
+        // 📊 Card de informações da rota (distância e tempo)
+        _buildRouteInfoCard(),
+
         if (_isVisitor) const FeedbackTab(),
       ],
     );
@@ -623,13 +626,10 @@ class _HomePageState extends State<HomePage> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Botões de navegação (quando navegando)
         _buildNavigationButtons(),
 
-        // Botão de seleção de andar (quando não navegando)
         _buildFloorSelectionButton(),
 
-        // Botão de busca
         _buildSearchButton(),
       ],
     );
@@ -943,6 +943,190 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ============ UTILITÁRIOS ============
+
+  /// Card com informações da rota (distância e tempo)
+  Widget _buildRouteInfoCard() {
+    return Obx(() {
+      final activeRoute = _locationService?.activeRoute.value;
+      
+      if (activeRoute == null) {
+        return const SizedBox.shrink();
+      }
+
+      final distance = activeRoute.totalDistance;
+      final timeMinutes = activeRoute.estimatedTime;
+      final mode = activeRoute.mode;
+
+      // Formata distância
+      String distanceText;
+      if (distance >= 1000) {
+        distanceText = '${(distance / 1000).toStringAsFixed(2)} km';
+      } else {
+        distanceText = '${distance.toStringAsFixed(0)} m';
+      }
+
+      // Formata tempo
+      String timeText;
+      if (timeMinutes >= 60) {
+        final hours = (timeMinutes / 60).floor();
+        final minutes = (timeMinutes % 60).round();
+        timeText = '${hours}h ${minutes}min';
+      } else {
+        timeText = '${timeMinutes.round()} min';
+      }
+
+      // Ícone e cor baseados no modo
+      IconData modeIcon;
+      Color modeColor;
+      String modeText;
+      
+      if (mode == TransportMode.driving) {
+        modeIcon = Icons.directions_car;
+        modeColor = Colors.blue[700]!;
+        modeText = 'Dirigindo';
+      } else {
+        modeIcon = Icons.directions_walk;
+        modeColor = Colors.green[700]!;
+        modeText = 'Caminhando';
+      }
+
+      return Positioned(
+        bottom: _locationService?.isNavigating.value == true ? 200 : 100,
+        left: 16,
+        right: 16,
+        child: Card(
+          elevation: 8,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Cabeçalho com modo de transporte
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: modeColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(modeIcon, color: modeColor, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      modeText,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: modeColor,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3C3CC0).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'ROTA ATIVA',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF3C3CC0),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Informações de distância e tempo
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    // Distância
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.straighten,
+                              color: Color(0xFF3C3CC0),
+                              size: 28,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              distanceText,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF3C3CC0),
+                              ),
+                            ),
+                            const Text(
+                              'Distância',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Tempo estimado
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.access_time,
+                              color: Colors.orange,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              timeText,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const Text(
+                              'Tempo Est.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
 
   List<int> _extractFloors(Map<String, dynamic>? structure) {
     if (structure == null || structure['floors'] == null) return [];
