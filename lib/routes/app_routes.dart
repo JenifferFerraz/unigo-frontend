@@ -68,12 +68,25 @@ abstract class AppRoutes {
     GetPage(
       name: RESET_PASSWORD,
       page: () {
-        // Verifica se há token na query string
         final uri = Uri.tryParse(Uri.base.toString());
-        if (uri != null && uri.queryParameters.containsKey('token')) {
-          final token = uri.queryParameters['token'];
+        String? token;
+        
+        if (uri != null) {
+          // Tenta pegar do queryParameters primeiro
+          if (uri.queryParameters.containsKey('token')) {
+            token = uri.queryParameters['token'];
+          } else {
+            // Para Flutter web com hash routing, parse o fragment
+            final fragment = uri.fragment;
+            if (fragment.isNotEmpty) {
+              final fragmentUri = Uri.tryParse('http://dummy.com/$fragment');
+              if (fragmentUri != null && fragmentUri.queryParameters.containsKey('token')) {
+                token = fragmentUri.queryParameters['token'];
+              }
+            }
+          }
+          
           if (token != null && token.isNotEmpty) {
-            // Mostra a página de confirmação se tiver token
             return ConfirmResetPasswordPage();
           }
         }

@@ -26,15 +26,30 @@ class MyApp extends StatelessWidget {
     try {
       final uri = Uri.tryParse(Uri.base.toString());
       if (uri != null) {
-        final path = uri.path;
+        // Para Flutter web com hash routing, o path vem do fragment
+        String path = uri.fragment;
         
-        // Se a URL for /reset-password com token, vai direto para lá
-        if (path == '/reset-password' && uri.queryParameters.containsKey('token')) {
+        // Remove a barra inicial se existir
+        if (path.startsWith('/')) {
+          path = path.substring(1);
+        }
+        
+        // Se a URL for reset-password com token, vai para a página de confirmação
+        if (path.startsWith('reset-password') && uri.queryParameters.containsKey('token')) {
           return AppRoutes.RESET_PASSWORD;
         }
         
-        // Se a URL for /reset-password sem token, também vai para lá
-        if (path == '/reset-password') {
+        // Se a URL for reset-password sem token, também vai para lá (página de solicitação)
+        if (path.startsWith('reset-password')) {
+          return AppRoutes.RESET_PASSWORD;
+        }
+        
+        // Verifica também o path normal (sem hash)
+        if (uri.path == '/reset-password' && uri.queryParameters.containsKey('token')) {
+          return AppRoutes.RESET_PASSWORD;
+        }
+        
+        if (uri.path == '/reset-password') {
           return AppRoutes.RESET_PASSWORD;
         }
       }

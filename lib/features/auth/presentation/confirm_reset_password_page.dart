@@ -18,8 +18,21 @@ class ConfirmResetPasswordPage extends GetView<AuthService> {
     String? token;
     try {
       final uri = Uri.tryParse(Uri.base.toString());
-      if (uri != null && uri.queryParameters.containsKey('token')) {
-        token = uri.queryParameters['token'];
+      if (uri != null) {
+        // Tenta pegar do queryParameters primeiro
+        if (uri.queryParameters.containsKey('token')) {
+          token = uri.queryParameters['token'];
+        } else {
+          // Para Flutter web com hash routing, parse o fragment
+          final fragment = uri.fragment;
+          if (fragment.isNotEmpty) {
+            // Parse o fragment que pode conter ?token=...
+            final fragmentUri = Uri.tryParse('http://dummy.com/$fragment');
+            if (fragmentUri != null && fragmentUri.queryParameters.containsKey('token')) {
+              token = fragmentUri.queryParameters['token'];
+            }
+          }
+        }
       }
     } catch (e) {
       // Ignora erros ao tentar parsear a URL
