@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../core/config/env_service.dart';
 import '../../storage/token_storage.dart';
+import './api_interceptor.dart';
 
 class UploadService {
   final Dio _client;
@@ -13,7 +14,7 @@ class UploadService {
               connectTimeout: const Duration(seconds: 30),
               receiveTimeout: const Duration(seconds: 30),
               headers: {'Content-Type': 'multipart/form-data'},
-            ));
+            ))..interceptors.add(AuthInterceptor());
 
   /// Upload de horários (schedules)
   Future<Map<String, dynamic>> uploadSchedule(PlatformFile file) async {

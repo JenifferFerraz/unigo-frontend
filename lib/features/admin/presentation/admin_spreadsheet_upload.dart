@@ -154,8 +154,8 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
         _preview = null;
       });
 
-      // Chama callback de sucesso para atualizar a lista
-      if (widget.onUploadSuccess != null && successCount > 0) {
+      // SEMPRE chama callback para atualizar a lista, independente do successCount
+      if (widget.onUploadSuccess != null) {
         widget.onUploadSuccess!();
       }
 
@@ -166,6 +166,14 @@ class _AdminSpreadsheetUploadState extends State<AdminSpreadsheetUpload> {
             content: Text('✅ $successCount ${successCount == 1 ? 'registro importado' : 'registros importados'} com sucesso!'),
             backgroundColor: Colors.green[700],
             duration: const Duration(seconds: 3),
+          ),
+        );
+      } else if (mounted && errorCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ $errorCount ${errorCount == 1 ? 'erro encontrado' : 'erros encontrados'}. Verifique o log.'),
+            backgroundColor: Colors.orange[700],
+            duration: const Duration(seconds: 4),
           ),
         );
       }

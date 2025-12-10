@@ -4,10 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/config/env_service.dart';
 import '../../../storage/token_storage.dart';
+import '../../../data/services/api_interceptor.dart';
 
 class AdminUploadService {
   final Dio _dio;
-  AdminUploadService([Dio? dio]) : _dio = dio ?? Dio();
+  AdminUploadService([Dio? dio]) : _dio = dio ?? Dio()..interceptors.add(AuthInterceptor());
 
   /// Buscar provas recentes
   Future<List<Map<String, dynamic>>> getRecentExams() async {

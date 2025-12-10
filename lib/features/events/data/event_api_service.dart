@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../core/config/env_service.dart';
 import '../../../storage/token_storage.dart';
 import '../../../data/models/event_model.dart';
+import '../../../data/services/api_interceptor.dart';
 
 class EventApiService {
   final Dio _client;
@@ -13,7 +14,7 @@ class EventApiService {
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 10),
               headers: {'Content-Type': 'application/json'},
-            ));
+            ))..interceptors.add(AuthInterceptor());
 
   Future<List<Event>> fetchEvents({String? courseId}) async {
     final token = await TokenStorage.getToken();
@@ -46,7 +47,7 @@ class EventApiService {
       final dio = Dio(BaseOptions(
         baseUrl: EnvService.apiBaseUrl,
         headers: {'Authorization': 'Bearer $token'},
-      ));
+      ))..interceptors.add(AuthInterceptor());
       final res = await dio.get('/api');
       if (res.statusCode == 200 && res.data is List) {
         return List<Map<String, dynamic>>.from(res.data);

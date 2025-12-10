@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../core/config/env_service.dart';
 import '../../storage/token_storage.dart';
+import './api_interceptor.dart';
 
 class CalendarService {
   final Dio _client;
@@ -10,7 +11,7 @@ class CalendarService {
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
     headers: {'Content-Type': 'application/json'},
-  ));
+  ))..interceptors.add(AuthInterceptor());
 
   Future<List<Map<String, dynamic>>> getCalendarEvents({
     int? month,
@@ -68,7 +69,7 @@ class CalendarService {
       final dio = Dio(BaseOptions(
         baseUrl: EnvService.apiBaseUrl,
         headers: {'Authorization': 'Bearer $token'},
-      ));
+      ))..interceptors.add(AuthInterceptor());
       final res = await dio.get('/api');
       if (res.statusCode == 200 && res.data is List) {
         return List<Map<String, dynamic>>.from(res.data);

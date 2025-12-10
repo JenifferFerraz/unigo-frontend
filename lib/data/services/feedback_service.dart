@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:universal_html/html.dart' as html;
 import '../../core/config/env_service.dart';
 import '../../storage/token_storage.dart';
+import './api_interceptor.dart';
 
 class FeedbackService {
   final Dio _client;
@@ -14,7 +15,7 @@ class FeedbackService {
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 10),
               headers: {'Content-Type': 'application/json'},
-            ));
+            ))..interceptors.add(AuthInterceptor());
 
   Future<Map<String, dynamic>> submitFeedback(Map<String, dynamic> feedbackData) async {
     try {

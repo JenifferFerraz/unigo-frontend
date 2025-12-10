@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../core/config/env_service.dart';
 import '../../storage/token_storage.dart';
+import './api_interceptor.dart';
 
 class ExamService {
   final Dio _client;
@@ -10,7 +11,7 @@ class ExamService {
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
     headers: {'Content-Type': 'application/json'},
-  ));
+  ))..interceptors.add(AuthInterceptor());
 
   Future<List<Map<String, dynamic>>> getExams({int? cycle, String? shift, int? month, int? year, String? courseId}) async {
     try {

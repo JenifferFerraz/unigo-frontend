@@ -8,6 +8,7 @@ import './storage_service.dart';
 import '../../core/config/env_service.dart';
 import './location_service.dart';
 import './websocket_service.dart';
+import './api_interceptor.dart';
 
 class AuthService extends GetxService {
   final StorageService storage = Get.find<StorageService>();
@@ -20,7 +21,7 @@ class AuthService extends GetxService {
     headers: {
       'Content-Type': 'application/json',
     },
-  ));
+  ))..interceptors.add(AuthInterceptor());
 
   final courses = <Map<String, dynamic>>[].obs;
 
@@ -28,7 +29,26 @@ class AuthService extends GetxService {
   void onInit() {
     super.onInit();
     fetchCourses();
+    _setupAuthListener();
   }
+  
+  /// Configura listener para monitorar mudanças no estado de autenticação
+  void _setupAuthListener() {
+    ever(currentUser, (User? user) {
+      // Se o usuário ficar null (token expirou/invalidado) e não estiver nas rotas de autenticação
+      if (user == null) {
+        final currentRoute = Get.currentRoute;
+        // Evita redirecionar se já estiver em uma rota de autenticação
+        if (currentRoute != AppRoutes.ACCESS_SELECTION &&
+            currentRoute != AppRoutes.LOGIN &&
+            currentRoute != AppRoutes.REGISTER &&
+            currentRoute != AppRoutes.TERMS) {
+          Get.offAllNamed(AppRoutes.ACCESS_SELECTION);
+        }
+      }
+    });
+  }
+  
   /// Inicializa o serviço carregando dados do usuário do armazenamento local
 
   Future<AuthService> init() async {
