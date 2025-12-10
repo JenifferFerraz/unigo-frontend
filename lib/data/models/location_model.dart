@@ -59,7 +59,7 @@ class Location {
 }
 
 class ClassNotification {
-  final int userId;
+  final String userId;
   final String userName;
   final String className;
   final String courseName;
